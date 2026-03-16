@@ -143,16 +143,23 @@ class TradeExecutor:
 
             trade.order_id = order.order_id
             trade.filled_contracts = order.filled_count
-            trade.actual_fill_price = order.average_fill_price or limit_price
 
-            # Check order status from response
-            if order.status == "executed":
-                trade.status = TradeStatus.FILLED
-                # If executed but API returned 0 filled_count, assume all contracts filled
-                if trade.filled_contracts == 0:
-                    trade.filled_contracts = bet.contracts
-            elif order.filled_count > 0:
+            # DEBUG: Log what API actually returns
+            print(f"[DEBUG] Order API response: status={order.status}, filled_count={order.filled_count}, avg_fill_price={order.average_fill_price}")
+
+            # ONLY set actual_fill_price if we have a real fill price (not 0)
+            if order.average_fill_price > 0:
+                trade.actual_fill_price = order.average_fill_price
+            else:
+                trade.actual_fill_price = 0  # Unknown until actually filled
+
+            # Check order status - ONLY mark as FILLED if contracts actually filled
+            if order.filled_count > 0:
+                trade.actual_fill_price = order.average_fill_price if order.average_fill_price > 0 else limit_price
                 trade.status = TradeStatus.FILLED if order.filled_count == bet.contracts else TradeStatus.PARTIAL
+            elif order.status == "resting":
+                # Limit order sitting in book, not filled yet
+                trade.status = TradeStatus.PENDING
             else:
                 trade.status = TradeStatus.PENDING
 
@@ -183,27 +190,29 @@ class TradeExecutor:
         try:
             order = self.client.get_order(order_id)
 
-            trade.filled_contracts = order.filled_count
-            trade.actual_fill_price = order.average_fill_price or trade.limit_price
+            # DEBUG: Log what API returns on status check
+            print(f"[DEBUG] Order status check: status={order.status}, filled_count={order.filled_count}, avg_fill_price={order.average_fill_price}")
 
-            if order.status == "executed":
-                trade.status = TradeStatus.FILLED
-                # If executed but API returned 0 filled_count, assume all contracts filled
-                if trade.filled_contracts == 0:
-                    trade.filled_contracts = trade.contracts
+            trade.filled_contracts = order.filled_count
+
+            # ONLY mark as FILLED if contracts actually filled
+            if order.filled_count > 0:
+                trade.actual_fill_price = order.average_fill_price if order.average_fill_price > 0 else trade.limit_price
+                trade.status = TradeStatus.FILLED if order.filled_count == trade.contracts else TradeStatus.PARTIAL
             elif order.status == "canceled":
                 trade.status = TradeStatus.CANCELED
-            elif order.filled_count > 0:
-                trade.status = TradeStatus.PARTIAL
+            elif order.status == "resting":
+                # Still sitting in book unfilled
+                trade.status = TradeStatus.PENDING
+            # else keep current status
 
             return trade
 
         except Exception as e:
-            # 404 = order already executed and purged, assume filled
+            # 404 could mean order expired/canceled, don't assume filled
             if "404" in str(e):
-                trade.status = TradeStatus.FILLED
-                if trade.filled_contracts == 0:
-                    trade.filled_contracts = trade.contracts
+                print(f"[DEBUG] Order {order_id} returned 404 - checking fills to verify")
+                # Don't assume filled - leave as pending, will timeout
             return trade
 
     def check_settlement(self, ticker: str) -> Optional[str]:
@@ -254,25 +263,34 @@ class TradeExecutor:
     ) -> TradeRecord:
         """Wait for an order to fill."""
         start = time.time()
+        poll_count = 0
 
         while time.time() - start < timeout_seconds:
             trade = self.check_order_status(order_id)
+            poll_count += 1
 
             if trade and trade.status in [TradeStatus.FILLED, TradeStatus.CANCELED]:
+                print(f"[DEBUG] Order filled/canceled after {poll_count} polls ({time.time() - start:.1f}s)")
                 return trade
+
+            # Log every 5 polls (~2.5s) to show we're waiting
+            if poll_count % 5 == 0:
+                print(f"[DEBUG] Still waiting for fill... {poll_count} polls, {time.time() - start:.1f}s elapsed")
 
             time.sleep(poll_interval)
 
         # Timeout - mark as unfilled
+        print(f"[DEBUG] Fill timeout after {timeout_seconds}s - order did NOT fill")
         if order_id in self.pending_orders:
             trade = self.pending_orders[order_id]
             if trade.filled_contracts == 0:
                 trade.status = TradeStatus.UNFILLED
-                # Try to cancel
+                # Try to cancel the resting order
                 try:
                     self.client.cancel_order(order_id)
-                except:
-                    pass
+                    print(f"[DEBUG] Canceled unfilled order {order_id}")
+                except Exception as e:
+                    print(f"[DEBUG] Failed to cancel order: {e}")
             return trade
 
         return None
