@@ -153,10 +153,25 @@ class TradeExecutor:
             else:
                 trade.actual_fill_price = 0  # Unknown until actually filled
 
-            # Check order status - ONLY mark as FILLED if contracts actually filled
+            # Check order status
             if order.filled_count > 0:
                 trade.actual_fill_price = order.average_fill_price if order.average_fill_price > 0 else limit_price
                 trade.status = TradeStatus.FILLED if order.filled_count == bet.contracts else TradeStatus.PARTIAL
+            elif order.status == "executed":
+                # Kalshi says executed but doesn't populate fill details - check fills endpoint
+                fills = self.client.get_fills(ticker=opportunity.ticker, limit=5)
+                recent_fill = next((f for f in fills if f.get("order_id") == order.order_id), None)
+                if recent_fill:
+                    trade.filled_contracts = recent_fill.get("count", bet.contracts)
+                    trade.actual_fill_price = int(float(recent_fill.get("yes_price", limit_price)) * 100) if opportunity.side == "yes" else int(float(recent_fill.get("no_price", limit_price)) * 100)
+                    trade.status = TradeStatus.FILLED
+                    print(f"[DEBUG] Found fill in fills endpoint: {trade.filled_contracts} @ {trade.actual_fill_price}c")
+                else:
+                    # Trust executed status, use limit price
+                    trade.filled_contracts = bet.contracts
+                    trade.actual_fill_price = limit_price
+                    trade.status = TradeStatus.FILLED
+                    print(f"[DEBUG] Trusting executed status, assuming fill @ {limit_price}c")
             elif order.status == "resting":
                 # Limit order sitting in book, not filled yet
                 trade.status = TradeStatus.PENDING
@@ -195,10 +210,28 @@ class TradeExecutor:
 
             trade.filled_contracts = order.filled_count
 
-            # ONLY mark as FILLED if contracts actually filled
+            # Check fill status
             if order.filled_count > 0:
                 trade.actual_fill_price = order.average_fill_price if order.average_fill_price > 0 else trade.limit_price
                 trade.status = TradeStatus.FILLED if order.filled_count == trade.contracts else TradeStatus.PARTIAL
+            elif order.status == "executed":
+                # Kalshi says executed but no fill details - check fills endpoint
+                fills = self.client.get_fills(ticker=trade.ticker, limit=5)
+                recent_fill = next((f for f in fills if f.get("order_id") == order_id), None)
+                if recent_fill:
+                    trade.filled_contracts = recent_fill.get("count", trade.contracts)
+                    # Handle price - fills endpoint returns dollar strings
+                    price_key = "yes_price" if trade.side == "yes" else "no_price"
+                    price_val = recent_fill.get(price_key, 0)
+                    trade.actual_fill_price = int(float(price_val) * 100) if price_val else trade.limit_price
+                    trade.status = TradeStatus.FILLED
+                    print(f"[DEBUG] Fill confirmed via fills endpoint: {trade.filled_contracts} @ {trade.actual_fill_price}c")
+                else:
+                    # Executed but can't find fill - trust it
+                    trade.filled_contracts = trade.contracts
+                    trade.actual_fill_price = trade.limit_price
+                    trade.status = TradeStatus.FILLED
+                    print(f"[DEBUG] Executed status, assuming fill @ {trade.limit_price}c")
             elif order.status == "canceled":
                 trade.status = TradeStatus.CANCELED
             elif order.status == "resting":
@@ -209,10 +242,22 @@ class TradeExecutor:
             return trade
 
         except Exception as e:
-            # 404 could mean order expired/canceled, don't assume filled
+            # 404 often means order executed and purged - check fills endpoint
             if "404" in str(e):
-                print(f"[DEBUG] Order {order_id} returned 404 - checking fills to verify")
-                # Don't assume filled - leave as pending, will timeout
+                print(f"[DEBUG] Order {order_id} returned 404 - checking fills endpoint")
+                try:
+                    fills = self.client.get_fills(ticker=trade.ticker, limit=5)
+                    recent_fill = next((f for f in fills if f.get("order_id") == order_id), None)
+                    if recent_fill:
+                        trade.filled_contracts = recent_fill.get("count", trade.contracts)
+                        price_key = "yes_price" if trade.side == "yes" else "no_price"
+                        price_val = recent_fill.get(price_key, 0)
+                        trade.actual_fill_price = int(float(price_val) * 100) if price_val else trade.limit_price
+                        trade.status = TradeStatus.FILLED
+                        print(f"[DEBUG] 404 but found fill: {trade.filled_contracts} @ {trade.actual_fill_price}c")
+                        return trade
+                except:
+                    pass
             return trade
 
     def check_settlement(self, ticker: str) -> Optional[str]:
