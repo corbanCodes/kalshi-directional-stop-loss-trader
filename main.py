@@ -43,6 +43,7 @@ DASHBOARD_STATE = {
     "effective_bankroll": 0,
     "auto_compound": True,
     "stop_loss_enabled": True,
+    "stop_loss_price": 50,  # Default 50c
     "today_profit": 0,
     "total_trades": 0,
     "wins": 0,
@@ -171,18 +172,24 @@ class DashboardHandler(BaseHTTPRequestHandler):
             amount = data.get('amount')
             auto_compound = data.get('auto_compound', True)
             stop_loss_enabled = data.get('stop_loss_enabled', True)
+            stop_loss_price = data.get('stop_loss_price', 50)
+
+            # Validate stop loss price
+            if stop_loss_price < 10 or stop_loss_price > 60:
+                stop_loss_price = 50  # Default if invalid
 
             if amount and amount > 0:
                 DASHBOARD_STATE["starting_bankroll"] = amount
                 DASHBOARD_STATE["effective_bankroll"] = amount
                 DASHBOARD_STATE["auto_compound"] = auto_compound
                 DASHBOARD_STATE["stop_loss_enabled"] = stop_loss_enabled
+                DASHBOARD_STATE["stop_loss_price"] = stop_loss_price
 
                 # Calculate bet info
-                calc = BetCalculator(bet_percentage=0.05, stop_loss_price=50)
+                calc = BetCalculator(bet_percentage=0.05, stop_loss_price=stop_loss_price)
                 bet = calc.calculate_bet(amount, 70)
 
-                sl_status = "ON" if stop_loss_enabled else "OFF"
+                sl_status = f"{stop_loss_price}c" if stop_loss_enabled else "OFF"
                 log_activity(f"Bankroll set to ${amount:.2f} (Stop Loss: {sl_status})")
 
                 self.send_json({
@@ -651,7 +658,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             </div>
             <div class="compound-toggle" style="margin-top:8px;">
                 <input type="checkbox" id="stopLossEnabled" checked>
-                <label for="stopLossEnabled">Stop loss at 50c <span style="color:var(--green);font-size:0.85em;">(RECOMMENDED)</span></label>
+                <label for="stopLossEnabled">Stop loss at</label>
+                <input type="number" id="stopLossPrice" value="50" min="10" max="60" step="1" style="width:60px;padding:4px 8px;font-size:0.9rem;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-left:8px;margin-right:4px;">
+                <span style="color:var(--muted);">cents</span>
+                <span style="color:var(--green);font-size:0.85em;margin-left:8px;">(RECOMMENDED: 50c)</span>
             </div>
         </div>
 
@@ -704,7 +714,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 <div class="rule-label">Entry Range</div>
             </div>
             <div class="rule-item">
-                <div class="rule-value">50c</div>
+                <div class="rule-value" id="ruleStopLoss">50c</div>
                 <div class="rule-label">Stop Loss</div>
             </div>
             <div class="rule-item">
@@ -751,13 +761,15 @@ class DashboardHandler(BaseHTTPRequestHandler):
     <script>
         // Calculate bet preview on input
         document.getElementById('bankrollInput').addEventListener('input', updateBetPreview);
+        document.getElementById('stopLossPrice').addEventListener('input', updateBetPreview);
 
         function updateBetPreview() {
             const bankroll = parseFloat(document.getElementById('bankrollInput').value) || 0;
+            const stopLossPrice = parseInt(document.getElementById('stopLossPrice').value) || 50;
             const betAmount = bankroll * 0.05;
             const contracts = Math.floor(betAmount / 0.70);
             const winProfit = contracts * 0.27; // 30c - 3c fee
-            const stopLoss = contracts * 0.20; // entry - 50c
+            const stopLoss = contracts * (70 - stopLossPrice) / 100; // entry - stop loss
 
             document.getElementById('previewContracts').textContent = contracts;
             document.getElementById('previewWin').textContent = '+$' + winProfit.toFixed(2);
@@ -779,6 +791,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 const amount = parseFloat(document.getElementById('bankrollInput').value);
                 const autoCompound = document.getElementById('autoCompound').checked;
                 const stopLossEnabled = document.getElementById('stopLossEnabled').checked;
+                const stopLossPrice = parseInt(document.getElementById('stopLossPrice').value) || 50;
 
                 if (!amount || amount <= 0) {
                     alert('Enter a valid bankroll amount');
@@ -789,7 +802,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 fetch('/api/set-bankroll', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({amount, auto_compound: autoCompound, stop_loss_enabled: stopLossEnabled})
+                    body: JSON.stringify({amount, auto_compound: autoCompound, stop_loss_enabled: stopLossEnabled, stop_loss_price: stopLossPrice})
                 }).then(r => r.json()).then(d => {
                     if (d.success) {
                         fetch('/api/start', {method: 'POST'}).then(() => {
@@ -846,6 +859,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 const total = wins + losses;
                 document.getElementById('winRate').textContent = total > 0 ? (wins/total*100).toFixed(0) + '%' : '0%';
                 document.getElementById('tradeCount').textContent = total;
+
+                // Stop loss display
+                const slPrice = data.stop_loss_price || 50;
+                const slEnabled = data.stop_loss_enabled !== false;
+                document.getElementById('ruleStopLoss').textContent = slEnabled ? slPrice + 'c' : 'OFF';
 
                 // Markets
                 const markets = data.market_prices || {};
@@ -1038,8 +1056,9 @@ def cmd_run():
             DASHBOARD_STATE["status"] = "running"
             DASHBOARD_STATE["error"] = None
 
-            # Sync stop loss setting from dashboard
+            # Sync stop loss settings from dashboard
             trader.stop_loss_enabled = DASHBOARD_STATE.get("stop_loss_enabled", True)
+            trader.STOP_LOSS_PRICE = DASHBOARD_STATE.get("stop_loss_price", 50)
 
             # Run trading cycle
             profit_before = trader.state.total_profit

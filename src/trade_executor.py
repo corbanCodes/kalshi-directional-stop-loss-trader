@@ -145,7 +145,13 @@ class TradeExecutor:
             trade.filled_contracts = order.filled_count
             trade.actual_fill_price = order.average_fill_price or limit_price
 
-            if order.filled_count > 0:
+            # Check order status from response
+            if order.status == "executed":
+                trade.status = TradeStatus.FILLED
+                # If executed but API returned 0 filled_count, assume all contracts filled
+                if trade.filled_contracts == 0:
+                    trade.filled_contracts = bet.contracts
+            elif order.filled_count > 0:
                 trade.status = TradeStatus.FILLED if order.filled_count == bet.contracts else TradeStatus.PARTIAL
             else:
                 trade.status = TradeStatus.PENDING
@@ -182,6 +188,9 @@ class TradeExecutor:
 
             if order.status == "executed":
                 trade.status = TradeStatus.FILLED
+                # If executed but API returned 0 filled_count, assume all contracts filled
+                if trade.filled_contracts == 0:
+                    trade.filled_contracts = trade.contracts
             elif order.status == "canceled":
                 trade.status = TradeStatus.CANCELED
             elif order.filled_count > 0:
@@ -190,7 +199,11 @@ class TradeExecutor:
             return trade
 
         except Exception as e:
-            print(f"Error checking order {order_id}: {e}")
+            # 404 = order already executed and purged, assume filled
+            if "404" in str(e):
+                trade.status = TradeStatus.FILLED
+                if trade.filled_contracts == 0:
+                    trade.filled_contracts = trade.contracts
             return trade
 
     def check_settlement(self, ticker: str) -> Optional[str]:
