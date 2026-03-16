@@ -132,8 +132,35 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_json({"success": True})
         elif self.path == "/api/set-bankroll":
             self.handle_set_bankroll()
+        elif self.path == "/api/reset-stats":
+            self.handle_reset_stats()
         else:
             self.send_error(404)
+
+    def handle_reset_stats(self):
+        """Reset session stats (P&L, wins, losses, trades)."""
+        global GLOBAL_TRADER
+
+        # Reset dashboard state
+        DASHBOARD_STATE["today_profit"] = 0
+        DASHBOARD_STATE["total_trades"] = 0
+        DASHBOARD_STATE["wins"] = 0
+        DASHBOARD_STATE["losses"] = 0
+        DASHBOARD_STATE["stopped_out"] = 0
+        DASHBOARD_STATE["recent_trades"] = []
+
+        # Reset trader state if available
+        if GLOBAL_TRADER:
+            GLOBAL_TRADER.state.total_profit = 0
+            GLOBAL_TRADER.state.total_trades = 0
+            GLOBAL_TRADER.state.total_wins = 0
+            GLOBAL_TRADER.state.total_losses = 0
+            GLOBAL_TRADER.state.total_stopped = 0
+            GLOBAL_TRADER.trade_history = []
+            GLOBAL_TRADER._traded_tickers.clear()
+
+        log_activity("Stats RESET")
+        self.send_json({"success": True})
 
     def handle_set_bankroll(self):
         try:
@@ -666,6 +693,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 <div class="stat-label">Trades</div>
             </div>
         </div>
+        <div style="text-align:center;margin-bottom:15px;">
+            <button onclick="resetStats()" style="background:transparent;border:1px solid #444;color:#888;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:0.85em;">Reset Stats</button>
+        </div>
 
         <!-- Strategy Rules -->
         <div class="rules-bar">
@@ -732,6 +762,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             document.getElementById('previewContracts').textContent = contracts;
             document.getElementById('previewWin').textContent = '+$' + winProfit.toFixed(2);
             document.getElementById('previewStop').textContent = '-$' + stopLoss.toFixed(2);
+        }
+
+        function resetStats() {
+            if (confirm('Reset P&L, win rate, and trade history?')) {
+                fetch('/api/reset-stats', {method: 'POST'}).then(() => updateUI());
+            }
         }
 
         function toggleTrading() {
