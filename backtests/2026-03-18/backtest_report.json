@@ -1,0 +1,41 @@
+{
+  "Small ($40)": {
+    "starting_bankroll": 40,
+    "final_bankroll": 34.50999999999999,
+    "total_pnl": -5.490000000000009,
+    "roi": -13.725000000000023,
+    "wins": 3,
+    "losses": 2,
+    "win_rate": 60.0,
+    "total_trades": 6,
+    "max_drawdown": 14.55805892547661,
+    "ended_in_recovery": true,
+    "final_consecutive_losses": 2
+  },
+  "Medium ($400)": {
+    "starting_bankroll": 400,
+    "final_bankroll": 461.91,
+    "total_pnl": 61.910000000000025,
+    "roi": 15.477500000000004,
+    "wins": 65,
+    "losses": 5,
+    "win_rate": 92.85714285714286,
+    "total_trades": 70,
+    "max_drawdown": 23.026130631508305,
+    "ended_in_recovery": false,
+    "final_consecutive_losses": 0
+  },
+  "Large ($4000)": {
+    "starting_bankroll": 4000,
+    "final_bankroll": 4648.249999999999,
+    "total_pnl": 648.2499999999991,
+    "roi": 16.206249999999976,
+    "wins": 65,
+    "losses": 5,
+    "win_rate": 92.85714285714286,
+    "total_trades": 70,
+    "max_drawdown": 24.231915236917107,
+    "ended_in_recovery": false,
+    "final_consecutive_losses": 0
+  }
+}

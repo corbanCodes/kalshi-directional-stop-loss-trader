@@ -1,0 +1,2077 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Backtest Comparison - $60 vs $400 vs $4000</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Consolas', monospace; background: #0a0a0a; color: #e0e0e0; padding: 20px; }
+        h1 { color: #6bcb77; margin-bottom: 10px; }
+        h2 { color: #4ecdc4; margin: 30px 0 15px 0; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        h3 { color: #ffd93d; margin: 20px 0 10px 0; }
+        .container { max-width: 1600px; margin: 0 auto; }
+
+        .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0; }
+        .summary-card { background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 20px; }
+        .summary-card h3 { margin-bottom: 15px; text-align: center; }
+        .summary-card.winner { border-color: #6bcb77; }
+        .summary-card.loser { border-color: #ff6b6b; }
+
+        .stat { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; }
+        .stat-label { color: #888; }
+        .stat-value { font-weight: bold; }
+        .stat-value.positive { color: #6bcb77; }
+        .stat-value.negative { color: #ff6b6b; }
+        .stat-value.warning { color: #ffd93d; }
+
+        .trades-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
+        .trade-log { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; overflow: hidden; }
+        .trade-log-header { background: #222; padding: 10px 15px; font-weight: bold; position: sticky; top: 0; }
+        .trade-log-body { max-height: 600px; overflow-y: auto; font-size: 0.75rem; }
+
+        .trade-row { display: grid; grid-template-columns: 30px 1fr 50px 60px 70px 50px; gap: 5px; padding: 6px 10px; border-bottom: 1px solid #1a1a1a; align-items: center; }
+        .trade-row:hover { background: #222; }
+        .trade-row.loss { background: rgba(255, 107, 107, 0.1); }
+        .trade-row.recovery { background: rgba(255, 217, 61, 0.05); }
+        .trade-row.cant-afford { background: rgba(255, 107, 107, 0.3); }
+        .trade-row.header { background: #222; font-weight: bold; color: #888; font-size: 0.7rem; position: sticky; top: 0; }
+
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 0.65rem; }
+        .badge.win { background: rgba(107, 203, 119, 0.2); color: #6bcb77; }
+        .badge.loss { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; }
+        .badge.recovery { background: rgba(255, 217, 61, 0.2); color: #ffd93d; }
+        .badge.bust { background: rgba(255, 107, 107, 0.4); color: #ff6b6b; }
+
+        .pnl.positive { color: #6bcb77; }
+        .pnl.negative { color: #ff6b6b; }
+
+        .chart-container { background: #1a1a1a; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .chart { display: flex; align-items: end; height: 120px; gap: 1px; }
+        .chart-bar { flex: 1; min-width: 2px; transition: height 0.2s; }
+        .chart-bar.win { background: #6bcb77; }
+        .chart-bar.loss { background: #ff6b6b; }
+
+        .insight { background: rgba(78, 205, 196, 0.1); border-left: 3px solid #4ecdc4; padding: 15px; margin: 15px 0; }
+        .warning { background: rgba(255, 107, 107, 0.1); border-left: 3px solid #ff6b6b; padding: 15px; margin: 15px 0; }
+        .success { background: rgba(107, 203, 119, 0.1); border-left: 3px solid #6bcb77; padding: 15px; margin: 15px 0; }
+
+        .comparison-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .comparison-table th, .comparison-table td { padding: 12px; text-align: center; border-bottom: 1px solid #333; }
+        .comparison-table th { background: #1a1a1a; color: #6bcb77; }
+        .comparison-table tr:hover { background: #1a1a1a; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Backtest: $60 vs $400 vs $4000</h1>
+        <p style="color:#888;">Data: March 5-9, 2026 | Strategy: 80-92c entries, 85c recovery cap, martingale</p>
+
+        <h2>Summary Comparison</h2>
+        <table class="comparison-table">
+            <tr>
+                <th>Metric</th>
+                <th>$60 Bankroll</th>
+                <th>$400 Bankroll</th>
+                <th>$4,000 Bankroll</th>
+            </tr>
+<tr><td style='text-align:left;color:#888;'>Final Bankroll</td><td class='positive'>$66.85</td><td class='positive'>$461.91</td><td class='positive'>$4648.25</td></tr><tr><td style='text-align:left;color:#888;'>Total Pnl</td><td class='positive'>$+6.85</td><td class='positive'>$+61.91</td><td class='positive'>$+648.25</td></tr><tr><td style='text-align:left;color:#888;'>Roi</td><td class='positive'>+11.4%</td><td class='positive'>+15.5%</td><td class='positive'>+16.2%</td></tr><tr><td style='text-align:left;color:#888;'>Total Trades</td><td>70</td><td>70</td><td>70</td></tr><tr><td style='text-align:left;color:#888;'>Wins</td><td>65</td><td>65</td><td>65</td></tr><tr><td style='text-align:left;color:#888;'>Losses</td><td>5</td><td>5</td><td>5</td></tr><tr><td style='text-align:left;color:#888;'>Win Rate</td><td>92.9%</td><td>92.9%</td><td>92.9%</td></tr><tr><td style='text-align:left;color:#888;'>Max Drawdown</td><td class='warning'>18.5%</td><td class='warning'>23.0%</td><td class='warning'>24.2%</td></tr><tr><td style='text-align:left;color:#888;'>Ended In Recovery</td><td class='positive'>No</td><td class='positive'>No</td><td class='positive'>No</td></tr>
+        </table>
+
+        <h2>Bankroll Over Time</h2>
+        <div class="summary-grid">
+
+            <div class="chart-container">
+                <h3 style="margin-bottom:10px;">$60 Bankroll</h3>
+                <div class="chart">
+<div class="chart-bar win" style="height:89.99252056843684%;" title="$60.16"></div><div class="chart-bar win" style="height:90.21690351533287%;" title="$60.31"></div><div class="chart-bar win" style="height:90.33657442034409%;" title="$60.39"></div><div class="chart-bar loss" style="height:89.08002991772629%;" title="$59.55"></div><div class="chart-bar loss" style="height:81.54076290201947%;" title="$54.51"></div><div class="chart-bar win" style="height:90.33657442034408%;" title="$60.39"></div><div class="chart-bar win" style="height:90.5609573672401%;" title="$60.54"></div><div class="chart-bar win" style="height:90.71054599850414%;" title="$60.64"></div><div class="chart-bar win" style="height:90.87509349289456%;" title="$60.75"></div><div class="chart-bar win" style="height:91.12939416604341%;" title="$60.92"></div><div class="chart-bar win" style="height:91.32385938668665%;" title="$61.05"></div><div class="chart-bar win" style="height:91.47344801795066%;" title="$61.15"></div><div class="chart-bar win" style="height:91.6529543754675%;" title="$61.27"></div><div class="chart-bar win" style="height:91.83246073298432%;" title="$61.39"></div><div class="chart-bar win" style="height:91.93717277486914%;" title="$61.46"></div><div class="chart-bar win" style="height:92.11667913238595%;" title="$61.58"></div><div class="chart-bar win" style="height:92.26626776364999%;" title="$61.68"></div><div class="chart-bar win" style="height:92.4457741211668%;" title="$61.80"></div><div class="chart-bar loss" style="height:91.189229618549%;" title="$60.96"></div><div class="chart-bar win" style="height:92.62528047868364%;" title="$61.92"></div><div class="chart-bar win" style="height:92.77486910994767%;" title="$62.02"></div><div class="chart-bar win" style="height:92.86462228870607%;" title="$62.08"></div><div class="chart-bar win" style="height:93.0291697830965%;" title="$62.19"></div><div class="chart-bar win" style="height:93.19371727748693%;" title="$62.30"></div><div class="chart-bar win" style="height:93.32834704562455%;" title="$62.39"></div><div class="chart-bar win" style="height:93.44801795063577%;" title="$62.47"></div><div class="chart-bar win" style="height:93.55272999252058%;" title="$62.54"></div><div class="chart-bar win" style="height:93.64248317127901%;" title="$62.60"></div><div class="chart-bar win" style="height:93.79207180254305%;" title="$62.70"></div><div class="chart-bar loss" style="height:92.55048616305163%;" title="$61.87"></div><div class="chart-bar win" style="height:93.82198952879584%;" title="$62.72"></div><div class="chart-bar win" style="height:94.00149588631267%;" title="$62.84"></div><div class="chart-bar win" style="height:94.2109199700823%;" title="$62.98"></div><div class="chart-bar win" style="height:94.33059087509352%;" title="$63.06"></div><div class="chart-bar win" style="height:94.45026178010474%;" title="$63.14"></div><div class="chart-bar win" style="height:94.55497382198955%;" title="$63.21"></div><div class="chart-bar win" style="height:94.68960359012718%;" title="$63.30"></div><div class="chart-bar win" style="height:94.794315632012%;" title="$63.37"></div><div class="chart-bar win" style="height:94.95886312640242%;" title="$63.48"></div><div class="chart-bar win" style="height:95.07853403141364%;" title="$63.56"></div><div class="chart-bar win" style="height:95.33283470456249%;" title="$63.73"></div><div class="chart-bar win" style="height:95.51234106207932%;" title="$63.85"></div><div class="chart-bar win" style="height:95.61705310396414%;" title="$63.92"></div><div class="chart-bar win" style="height:95.82647718773376%;" title="$64.06"></div><div class="chart-bar win" style="height:95.94614809274498%;" title="$64.14"></div><div class="chart-bar win" style="height:96.11069558713541%;" title="$64.25"></div><div class="chart-bar win" style="height:96.26028421839942%;" title="$64.35"></div><div class="chart-bar win" style="height:96.45474943904264%;" title="$64.48"></div><div class="chart-bar win" style="height:96.55946148092745%;" title="$64.55"></div><div class="chart-bar win" style="height:96.66417352281226%;" title="$64.62"></div><div class="chart-bar win" style="height:96.78384442782347%;" title="$64.70"></div><div class="chart-bar win" style="height:96.88855646970829%;" title="$64.77"></div><div class="chart-bar win" style="height:97.0830216903515%;" title="$64.90"></div><div class="chart-bar win" style="height:97.17277486910993%;" title="$64.96"></div><div class="chart-bar win" style="height:97.41211667913235%;" title="$65.12"></div><div class="chart-bar loss" style="height:96.09573672400896%;" title="$64.24"></div><div class="chart-bar win" style="height:97.62154076290199%;" title="$65.26"></div><div class="chart-bar win" style="height:97.86088257292442%;" title="$65.42"></div><div class="chart-bar win" style="height:98.08526551982048%;" title="$65.57"></div><div class="chart-bar win" style="height:98.26477187733731%;" title="$65.69"></div><div class="chart-bar win" style="height:98.39940164547492%;" title="$65.78"></div><div class="chart-bar win" style="height:98.54899027673895%;" title="$65.88"></div><div class="chart-bar win" style="height:98.72849663425578%;" title="$66.00"></div><div class="chart-bar win" style="height:98.8182498130142%;" title="$66.06"></div><div class="chart-bar win" style="height:99.07255048616305%;" title="$66.23"></div><div class="chart-bar win" style="height:99.20718025430068%;" title="$66.32"></div><div class="chart-bar win" style="height:99.4166043380703%;" title="$66.46"></div><div class="chart-bar win" style="height:99.52131637995511%;" title="$66.53"></div><div class="chart-bar win" style="height:99.74569932685115%;" title="$66.68"></div><div class="chart-bar win" style="height:100.0%;" title="$66.85"></div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="margin-bottom:10px;">$400 Bankroll</h3>
+                <div class="chart">
+<div class="chart-bar win" style="height:86.90870515901365%;" title="$401.44"></div><div class="chart-bar win" style="height:87.2009698859085%;" title="$402.79"></div><div class="chart-bar win" style="height:87.3395250156957%;" title="$403.43"></div><div class="chart-bar loss" style="height:85.70284254508454%;" title="$395.87"></div><div class="chart-bar loss" style="height:76.9738693684917%;" title="$355.55"></div><div class="chart-bar win" style="height:87.36983395033664%;" title="$403.57"></div><div class="chart-bar win" style="height:87.6620986772315%;" title="$404.92"></div><div class="chart-bar win" style="height:87.85694182849471%;" title="$405.82"></div><div class="chart-bar win" style="height:88.07126929488427%;" title="$406.81"></div><div class="chart-bar win" style="height:88.4393063583815%;" title="$408.51"></div><div class="chart-bar win" style="height:88.6926024550237%;" title="$409.68"></div><div class="chart-bar win" style="height:88.88744560628693%;" title="$410.58"></div><div class="chart-bar win" style="height:89.12125738780281%;" title="$411.66"></div><div class="chart-bar win" style="height:89.35506916931868%;" title="$412.74"></div><div class="chart-bar win" style="height:89.47630490788248%;" title="$413.30"></div><div class="chart-bar win" style="height:89.71011668939835%;" title="$414.38"></div><div class="chart-bar win" style="height:89.90495984066158%;" title="$415.28"></div><div class="chart-bar win" style="height:90.13877162217744%;" title="$416.36"></div><div class="chart-bar loss" style="height:88.32023554372061%;" title="$407.96"></div><div class="chart-bar win" style="height:90.15609101340087%;" title="$416.44"></div><div class="chart-bar win" style="height:90.35093416466408%;" title="$417.34"></div><div class="chart-bar win" style="height:90.45485051200448%;" title="$417.82"></div><div class="chart-bar win" style="height:90.66917797839405%;" title="$418.81"></div><div class="chart-bar win" style="height:90.8835054447836%;" title="$419.80"></div><div class="chart-bar win" style="height:91.05886428092052%;" title="$420.61"></div><div class="chart-bar win" style="height:91.2147388019311%;" title="$421.33"></div><div class="chart-bar win" style="height:91.35112900781537%;" title="$421.96"></div><div class="chart-bar win" style="height:91.46803489857331%;" title="$422.50"></div><div class="chart-bar win" style="height:91.66287804983654%;" title="$423.40"></div><div class="chart-bar loss" style="height:89.86599121040895%;" title="$415.10"></div><div class="chart-bar win" style="height:91.66937282154531%;" title="$423.43"></div><div class="chart-bar win" style="height:91.90318460306118%;" title="$424.51"></div><div class="chart-bar win" style="height:92.17596501482971%;" title="$425.77"></div><div class="chart-bar win" style="height:92.3318395358403%;" title="$426.49"></div><div class="chart-bar win" style="height:92.48771405685089%;" title="$427.21"></div><div class="chart-bar win" style="height:92.62410426273516%;" title="$427.84"></div><div class="chart-bar win" style="height:92.79946309887205%;" title="$428.65"></div><div class="chart-bar win" style="height:92.93585330475632%;" title="$429.28"></div><div class="chart-bar win" style="height:93.15018077114588%;" title="$430.27"></div><div class="chart-bar win" style="height:93.30605529215647%;" title="$430.99"></div><div class="chart-bar win" style="height:93.6740923556537%;" title="$432.69"></div><div class="chart-bar win" style="height:93.90790413716957%;" title="$433.77"></div><div class="chart-bar win" style="height:94.04429434305383%;" title="$434.40"></div><div class="chart-bar win" style="height:94.3473836894633%;" title="$435.80"></div><div class="chart-bar win" style="height:94.50325821047389%;" title="$436.52"></div><div class="chart-bar win" style="height:94.71758567686345%;" title="$437.51"></div><div class="chart-bar win" style="height:94.91242882812668%;" title="$438.41"></div><div class="chart-bar win" style="height:95.19386893550691%;" title="$439.71"></div><div class="chart-bar win" style="height:95.33025914139117%;" title="$440.34"></div><div class="chart-bar win" style="height:95.46664934727544%;" title="$440.97"></div><div class="chart-bar win" style="height:95.62252386828602%;" title="$441.69"></div><div class="chart-bar win" style="height:95.75891407417029%;" title="$442.32"></div><div class="chart-bar win" style="height:96.04035418155051%;" title="$443.62"></div><div class="chart-bar win" style="height:96.15726007230846%;" title="$444.16"></div><div class="chart-bar win" style="height:96.50364789677643%;" title="$445.76"></div><div class="chart-bar loss" style="height:94.59851486220259%;" title="$436.96"></div><div class="chart-bar win" style="height:96.51230759238814%;" title="$445.80"></div><div class="chart-bar win" style="height:96.85869541685611%;" title="$447.40"></div><div class="chart-bar win" style="height:97.18343400229483%;" title="$448.90"></div><div class="chart-bar win" style="height:97.4432248706458%;" title="$450.10"></div><div class="chart-bar win" style="height:97.63806802190904%;" title="$451.00"></div><div class="chart-bar win" style="height:97.85456041220152%;" title="$452.00"></div><div class="chart-bar win" style="height:98.1143512805525%;" title="$453.20"></div><div class="chart-bar win" style="height:98.23125717131043%;" title="$453.74"></div><div class="chart-bar win" style="height:98.63609794115737%;" title="$455.61"></div><div class="chart-bar win" style="height:98.83094109242062%;" title="$456.51"></div><div class="chart-bar win" style="height:99.13403043883008%;" title="$457.91"></div><div class="chart-bar win" style="height:99.27042064471433%;" title="$458.54"></div><div class="chart-bar win" style="height:99.59515923015306%;" title="$460.04"></div><div class="chart-bar win" style="height:100.0%;" title="$461.91"></div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="margin-bottom:10px;">$4000 Bankroll</h3>
+                <div class="chart">
+<div class="chart-bar win" style="height:86.3877803474426%;" title="$4015.52"></div><div class="chart-bar win" style="height:86.69434733501858%;" title="$4029.77"></div><div class="chart-bar win" style="height:86.84580218361751%;" title="$4036.81"></div><div class="chart-bar loss" style="height:85.07481310170495%;" title="$3954.49"></div><div class="chart-bar loss" style="height:75.76808476308288%;" title="$3521.89"></div><div class="chart-bar win" style="height:86.8458021836175%;" title="$4036.81"></div><div class="chart-bar win" style="height:87.15559619211533%;" title="$4051.21"></div><div class="chart-bar win" style="height:87.3513687947077%;" title="$4060.31"></div><div class="chart-bar win" style="height:87.56908513956866%;" title="$4070.43"></div><div class="chart-bar win" style="height:87.93481417737858%;" title="$4087.43"></div><div class="chart-bar win" style="height:88.2005055666111%;" title="$4099.78"></div><div class="chart-bar win" style="height:88.39842951648471%;" title="$4108.98"></div><div class="chart-bar win" style="height:88.641101489808%;" title="$4120.26"></div><div class="chart-bar win" style="height:88.88377346313129%;" title="$4131.54"></div><div class="chart-bar win" style="height:89.01780239875221%;" title="$4137.77"></div><div class="chart-bar win" style="height:89.26305598881298%;" title="$4149.17"></div><div class="chart-bar win" style="height:89.46313128596782%;" title="$4158.47"></div><div class="chart-bar win" style="height:89.70838487602859%;" title="$4169.87"></div><div class="chart-bar loss" style="height:87.9012531597913%;" title="$4085.87"></div><div class="chart-bar win" style="height:89.70838487602859%;" title="$4169.87"></div><div class="chart-bar win" style="height:89.90846017318344%;" title="$4179.17"></div><div class="chart-bar win" style="height:90.02334211800138%;" title="$4184.51"></div><div class="chart-bar win" style="height:90.24815790889042%;" title="$4194.96"></div><div class="chart-bar win" style="height:90.47297369977946%;" title="$4205.41"></div><div class="chart-bar win" style="height:90.65304146721883%;" title="$4213.78"></div><div class="chart-bar win" style="height:90.8113806271177%;" title="$4221.14"></div><div class="chart-bar win" style="height:90.94842144893236%;" title="$4227.51"></div><div class="chart-bar win" style="height:91.06459420211903%;" title="$4232.91"></div><div class="chart-bar win" style="height:91.26897219383635%;" title="$4242.41"></div><div class="chart-bar loss" style="height:89.41192922067441%;" title="$4156.09"></div><div class="chart-bar win" style="height:91.26983273274884%;" title="$4242.45"></div><div class="chart-bar win" style="height:91.52024955628458%;" title="$4254.09"></div><div class="chart-bar win" style="height:91.82143817565746%;" title="$4268.09"></div><div class="chart-bar win" style="height:91.98149841338133%;" title="$4275.53"></div><div class="chart-bar win" style="height:92.1415586511052%;" title="$4282.97"></div><div class="chart-bar win" style="height:92.2816113591136%;" title="$4289.48"></div><div class="chart-bar win" style="height:92.46555155165917%;" title="$4298.03"></div><div class="chart-bar win" style="height:92.60560425966757%;" title="$4304.54"></div><div class="chart-bar win" style="height:92.83515301457534%;" title="$4315.21"></div><div class="chart-bar win" style="height:92.99693433012422%;" title="$4322.73"></div><div class="chart-bar win" style="height:93.38460711020275%;" title="$4340.75"></div><div class="chart-bar win" style="height:93.64018716721345%;" title="$4352.63"></div><div class="chart-bar win" style="height:93.78174581831871%;" title="$4359.21"></div><div class="chart-bar win" style="height:94.08895821007903%;" title="$4373.49"></div><div class="chart-bar win" style="height:94.25418168127788%;" title="$4381.17"></div><div class="chart-bar win" style="height:94.48846340020437%;" title="$4392.06"></div><div class="chart-bar win" style="height:94.69929543376539%;" title="$4401.86"></div><div class="chart-bar win" style="height:94.98456408325714%;" title="$4415.12"></div><div class="chart-bar win" style="height:95.12762867745926%;" title="$4421.77"></div><div class="chart-bar win" style="height:95.27219921475823%;" title="$4428.49"></div><div class="chart-bar win" style="height:95.43914376378207%;" title="$4436.25"></div><div class="chart-bar win" style="height:95.58371430108106%;" title="$4442.97"></div><div class="chart-bar win" style="height:95.87177970203842%;" title="$4456.36"></div><div class="chart-bar win" style="height:95.9944064970688%;" title="$4462.06"></div><div class="chart-bar win" style="height:96.36615930726617%;" title="$4479.34"></div><div class="chart-bar loss" style="height:94.43510998762974%;" title="$4389.58"></div><div class="chart-bar win" style="height:96.36615930726617%;" title="$4479.34"></div><div class="chart-bar win" style="height:96.73446996181359%;" title="$4496.46"></div><div class="chart-bar win" style="height:97.07976120045178%;" title="$4512.51"></div><div class="chart-bar win" style="height:97.34566772441241%;" title="$4524.87"></div><div class="chart-bar win" style="height:97.53928897972355%;" title="$4533.87"></div><div class="chart-bar win" style="height:97.75657505512828%;" title="$4543.97"></div><div class="chart-bar win" style="height:98.02506319582638%;" title="$4556.45"></div><div class="chart-bar win" style="height:98.15027160759425%;" title="$4562.27"></div><div class="chart-bar win" style="height:98.55988812994137%;" title="$4581.31"></div><div class="chart-bar win" style="height:98.75544559780562%;" title="$4590.40"></div><div class="chart-bar win" style="height:99.08072930672833%;" title="$4605.52"></div><div class="chart-bar win" style="height:99.23132361641477%;" title="$4612.52"></div><div class="chart-bar win" style="height:99.58306889689668%;" title="$4628.87"></div><div class="chart-bar win" style="height:100.0%;" title="$4648.25"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <h2>Trade-by-Trade Comparison</h2>
+        <div class="trades-container">
+
+            <div class="trade-log">
+                <div class="trade-log-header" style="color: #6bcb77;">
+                    $60: $60 → $66.85 (+6.85)
+                </div>
+                <div class="trade-log-body">
+                    <div class="trade-row header">
+                        <span>#</span>
+                        <span>Ticker</span>
+                        <span>Bet#</span>
+                        <span>Contracts</span>
+                        <span>P&L</span>
+                        <span>Balance</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>1</span>
+                        <span title="KXBTC15M-26MAR051900-00">R051900-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@82c</span>
+                        <span class="pnl positive">$+0.16</span>
+                        <span>$60.16</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>2</span>
+                        <span title="KXBTC15M-26MAR051915-15">R051915-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@84c</span>
+                        <span class="pnl positive">$+0.15</span>
+                        <span>$60.31</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>3</span>
+                        <span title="KXBTC15M-26MAR052130-30">R052130-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@91c</span>
+                        <span class="pnl positive">$+0.08</span>
+                        <span>$60.39</span>
+                    </div>
+
+                    <div class="trade-row loss">
+                        <span>4</span>
+                        <span title="KXBTC15M-26MAR052145-45">R052145-45</span>
+                        <span><span class="badge loss">#1</span></span>
+                        <span>1@82c</span>
+                        <span class="pnl negative">$-0.84</span>
+                        <span>$59.55</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>5</span>
+                        <span title="KXBTC15M-26MAR052330-30">R052330-30</span>
+                        <span><span class="badge recovery">#2</span></span>
+                        <span>6@83c</span>
+                        <span class="pnl negative">$-5.04</span>
+                        <span>$54.51</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>6</span>
+                        <span title="KXBTC15M-26MAR060015-15">R060015-15</span>
+                        <span><span class="badge recovery">#3</span></span>
+                        <span>42@85c</span>
+                        <span class="pnl positive">$+5.88</span>
+                        <span>$60.39</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>7</span>
+                        <span title="KXBTC15M-26MAR060045-45">R060045-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@84c</span>
+                        <span class="pnl positive">$+0.15</span>
+                        <span>$60.54</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>8</span>
+                        <span title="KXBTC15M-26MAR060100-00">R060100-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@89c</span>
+                        <span class="pnl positive">$+0.10</span>
+                        <span>$60.64</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>9</span>
+                        <span title="KXBTC15M-26MAR060115-15">R060115-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@88c</span>
+                        <span class="pnl positive">$+0.11</span>
+                        <span>$60.75</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>10</span>
+                        <span title="KXBTC15M-26MAR060200-00">R060200-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@81c</span>
+                        <span class="pnl positive">$+0.17</span>
+                        <span>$60.92</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>11</span>
+                        <span title="KXBTC15M-26MAR060300-00">R060300-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@86c</span>
+                        <span class="pnl positive">$+0.13</span>
+                        <span>$61.05</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>12</span>
+                        <span title="KXBTC15M-26MAR060400-00">R060400-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@89c</span>
+                        <span class="pnl positive">$+0.10</span>
+                        <span>$61.15</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>13</span>
+                        <span title="KXBTC15M-26MAR060415-15">R060415-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@87c</span>
+                        <span class="pnl positive">$+0.12</span>
+                        <span>$61.27</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>14</span>
+                        <span title="KXBTC15M-26MAR060430-30">R060430-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@87c</span>
+                        <span class="pnl positive">$+0.12</span>
+                        <span>$61.39</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>15</span>
+                        <span title="KXBTC15M-26MAR060515-15">R060515-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@92c</span>
+                        <span class="pnl positive">$+0.07</span>
+                        <span>$61.46</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>16</span>
+                        <span title="KXBTC15M-26MAR060900-00">R060900-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@87c</span>
+                        <span class="pnl positive">$+0.12</span>
+                        <span>$61.58</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>17</span>
+                        <span title="KXBTC15M-26MAR060930-30">R060930-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@89c</span>
+                        <span class="pnl positive">$+0.10</span>
+                        <span>$61.68</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>18</span>
+                        <span title="KXBTC15M-26MAR061145-45">R061145-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@87c</span>
+                        <span class="pnl positive">$+0.12</span>
+                        <span>$61.80</span>
+                    </div>
+
+                    <div class="trade-row loss">
+                        <span>19</span>
+                        <span title="KXBTC15M-26MAR061215-15">R061215-15</span>
+                        <span><span class="badge loss">#1</span></span>
+                        <span>1@83c</span>
+                        <span class="pnl negative">$-0.84</span>
+                        <span>$60.96</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>20</span>
+                        <span title="KXBTC15M-26MAR061415-15">R061415-15</span>
+                        <span><span class="badge recovery">#2</span></span>
+                        <span>6@83c</span>
+                        <span class="pnl positive">$+0.96</span>
+                        <span>$61.92</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>21</span>
+                        <span title="KXBTC15M-26MAR061500-00">R061500-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@89c</span>
+                        <span class="pnl positive">$+0.10</span>
+                        <span>$62.02</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>22</span>
+                        <span title="KXBTC15M-26MAR061600-00">R061600-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@93c</span>
+                        <span class="pnl positive">$+0.06</span>
+                        <span>$62.08</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>23</span>
+                        <span title="KXBTC15M-26MAR061800-00">R061800-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@88c</span>
+                        <span class="pnl positive">$+0.11</span>
+                        <span>$62.19</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>24</span>
+                        <span title="KXBTC15M-26MAR061945-45">R061945-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@88c</span>
+                        <span class="pnl positive">$+0.11</span>
+                        <span>$62.30</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>25</span>
+                        <span title="KXBTC15M-26MAR062000-00">R062000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@90c</span>
+                        <span class="pnl positive">$+0.09</span>
+                        <span>$62.39</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>26</span>
+                        <span title="KXBTC15M-26MAR062200-00">R062200-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@91c</span>
+                        <span class="pnl positive">$+0.08</span>
+                        <span>$62.47</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>27</span>
+                        <span title="KXBTC15M-26MAR062300-00">R062300-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@92c</span>
+                        <span class="pnl positive">$+0.07</span>
+                        <span>$62.54</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>28</span>
+                        <span title="KXBTC15M-26MAR062330-30">R062330-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@93c</span>
+                        <span class="pnl positive">$+0.06</span>
+                        <span>$62.60</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>29</span>
+                        <span title="KXBTC15M-26MAR070000-00">R070000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@89c</span>
+                        <span class="pnl positive">$+0.10</span>
+                        <span>$62.70</span>
+                    </div>
+
+                    <div class="trade-row loss">
+                        <span>30</span>
+                        <span title="KXBTC15M-26MAR070015-15">R070015-15</span>
+                        <span><span class="badge loss">#1</span></span>
+                        <span>1@81c</span>
+                        <span class="pnl negative">$-0.83</span>
+                        <span>$61.87</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>31</span>
+                        <span title="KXBTC15M-26MAR070100-00">R070100-00</span>
+                        <span><span class="badge recovery">#2</span></span>
+                        <span>5@81c</span>
+                        <span class="pnl positive">$+0.85</span>
+                        <span>$62.72</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>32</span>
+                        <span title="KXBTC15M-26MAR070230-30">R070230-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@87c</span>
+                        <span class="pnl positive">$+0.12</span>
+                        <span>$62.84</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>33</span>
+                        <span title="KXBTC15M-26MAR070315-15">R070315-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@85c</span>
+                        <span class="pnl positive">$+0.14</span>
+                        <span>$62.98</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>34</span>
+                        <span title="KXBTC15M-26MAR070345-45">R070345-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@91c</span>
+                        <span class="pnl positive">$+0.08</span>
+                        <span>$63.06</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>35</span>
+                        <span title="KXBTC15M-26MAR070415-15">R070415-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@91c</span>
+                        <span class="pnl positive">$+0.08</span>
+                        <span>$63.14</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>36</span>
+                        <span title="KXBTC15M-26MAR070445-45">R070445-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@92c</span>
+                        <span class="pnl positive">$+0.07</span>
+                        <span>$63.21</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>37</span>
+                        <span title="KXBTC15M-26MAR070515-15">R070515-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@90c</span>
+                        <span class="pnl positive">$+0.09</span>
+                        <span>$63.30</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>38</span>
+                        <span title="KXBTC15M-26MAR070545-45">R070545-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@92c</span>
+                        <span class="pnl positive">$+0.07</span>
+                        <span>$63.37</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>39</span>
+                        <span title="KXBTC15M-26MAR070930-30">R070930-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@88c</span>
+                        <span class="pnl positive">$+0.11</span>
+                        <span>$63.48</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>40</span>
+                        <span title="KXBTC15M-26MAR071230-30">R071230-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@91c</span>
+                        <span class="pnl positive">$+0.08</span>
+                        <span>$63.56</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>41</span>
+                        <span title="KXBTC15M-26MAR071400-00">R071400-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@81c</span>
+                        <span class="pnl positive">$+0.17</span>
+                        <span>$63.73</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>42</span>
+                        <span title="KXBTC15M-26MAR071445-45">R071445-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@87c</span>
+                        <span class="pnl positive">$+0.12</span>
+                        <span>$63.85</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>43</span>
+                        <span title="KXBTC15M-26MAR071515-15">R071515-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@92c</span>
+                        <span class="pnl positive">$+0.07</span>
+                        <span>$63.92</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>44</span>
+                        <span title="KXBTC15M-26MAR071615-15">R071615-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@85c</span>
+                        <span class="pnl positive">$+0.14</span>
+                        <span>$64.06</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>45</span>
+                        <span title="KXBTC15M-26MAR071715-15">R071715-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@91c</span>
+                        <span class="pnl positive">$+0.08</span>
+                        <span>$64.14</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>46</span>
+                        <span title="KXBTC15M-26MAR071730-30">R071730-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@88c</span>
+                        <span class="pnl positive">$+0.11</span>
+                        <span>$64.25</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>47</span>
+                        <span title="KXBTC15M-26MAR071745-45">R071745-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@89c</span>
+                        <span class="pnl positive">$+0.10</span>
+                        <span>$64.35</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>48</span>
+                        <span title="KXBTC15M-26MAR071845-45">R071845-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@86c</span>
+                        <span class="pnl positive">$+0.13</span>
+                        <span>$64.48</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>49</span>
+                        <span title="KXBTC15M-26MAR071930-30">R071930-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@92c</span>
+                        <span class="pnl positive">$+0.07</span>
+                        <span>$64.55</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>50</span>
+                        <span title="KXBTC15M-26MAR072000-00">R072000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@92c</span>
+                        <span class="pnl positive">$+0.07</span>
+                        <span>$64.62</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>51</span>
+                        <span title="KXBTC15M-26MAR072015-15">R072015-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@91c</span>
+                        <span class="pnl positive">$+0.08</span>
+                        <span>$64.70</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>52</span>
+                        <span title="KXBTC15M-26MAR072100-00">R072100-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@92c</span>
+                        <span class="pnl positive">$+0.07</span>
+                        <span>$64.77</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>53</span>
+                        <span title="KXBTC15M-26MAR072230-30">R072230-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@86c</span>
+                        <span class="pnl positive">$+0.13</span>
+                        <span>$64.90</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>54</span>
+                        <span title="KXBTC15M-26MAR072330-30">R072330-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@93c</span>
+                        <span class="pnl positive">$+0.06</span>
+                        <span>$64.96</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>55</span>
+                        <span title="KXBTC15M-26MAR072345-45">R072345-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@82c</span>
+                        <span class="pnl positive">$+0.16</span>
+                        <span>$65.12</span>
+                    </div>
+
+                    <div class="trade-row loss">
+                        <span>56</span>
+                        <span title="KXBTC15M-26MAR080115-15">R080115-15</span>
+                        <span><span class="badge loss">#1</span></span>
+                        <span>1@87c</span>
+                        <span class="pnl negative">$-0.88</span>
+                        <span>$64.24</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>57</span>
+                        <span title="KXBTC15M-26MAR080700-00">R080700-00</span>
+                        <span><span class="badge recovery">#2</span></span>
+                        <span>6@81c</span>
+                        <span class="pnl positive">$+1.02</span>
+                        <span>$65.26</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>58</span>
+                        <span title="KXBTC15M-26MAR080845-45">R080845-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@83c</span>
+                        <span class="pnl positive">$+0.16</span>
+                        <span>$65.42</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>59</span>
+                        <span title="KXBTC15M-26MAR080900-00">R080900-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@84c</span>
+                        <span class="pnl positive">$+0.15</span>
+                        <span>$65.57</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>60</span>
+                        <span title="KXBTC15M-26MAR080945-45">R080945-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@87c</span>
+                        <span class="pnl positive">$+0.12</span>
+                        <span>$65.69</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>61</span>
+                        <span title="KXBTC15M-26MAR081000-00">R081000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@90c</span>
+                        <span class="pnl positive">$+0.09</span>
+                        <span>$65.78</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>62</span>
+                        <span title="KXBTC15M-26MAR081130-30">R081130-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@89c</span>
+                        <span class="pnl positive">$+0.10</span>
+                        <span>$65.88</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>63</span>
+                        <span title="KXBTC15M-26MAR081445-45">R081445-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@87c</span>
+                        <span class="pnl positive">$+0.12</span>
+                        <span>$66.00</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>64</span>
+                        <span title="KXBTC15M-26MAR081545-45">R081545-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@93c</span>
+                        <span class="pnl positive">$+0.06</span>
+                        <span>$66.06</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>65</span>
+                        <span title="KXBTC15M-26MAR081630-30">R081630-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@81c</span>
+                        <span class="pnl positive">$+0.17</span>
+                        <span>$66.23</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>66</span>
+                        <span title="KXBTC15M-26MAR082000-00">R082000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@90c</span>
+                        <span class="pnl positive">$+0.09</span>
+                        <span>$66.32</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>67</span>
+                        <span title="KXBTC15M-26MAR082100-00">R082100-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@85c</span>
+                        <span class="pnl positive">$+0.14</span>
+                        <span>$66.46</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>68</span>
+                        <span title="KXBTC15M-26MAR082130-30">R082130-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@92c</span>
+                        <span class="pnl positive">$+0.07</span>
+                        <span>$66.53</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>69</span>
+                        <span title="KXBTC15M-26MAR082145-45">R082145-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@84c</span>
+                        <span class="pnl positive">$+0.15</span>
+                        <span>$66.68</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>70</span>
+                        <span title="KXBTC15M-26MAR082300-00">R082300-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>1@81c</span>
+                        <span class="pnl positive">$+0.17</span>
+                        <span>$66.85</span>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="trade-log">
+                <div class="trade-log-header" style="color: #6bcb77;">
+                    $400: $400 → $461.91 (+61.91)
+                </div>
+                <div class="trade-log-body">
+                    <div class="trade-row header">
+                        <span>#</span>
+                        <span>Ticker</span>
+                        <span>Bet#</span>
+                        <span>Contracts</span>
+                        <span>P&L</span>
+                        <span>Balance</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>1</span>
+                        <span title="KXBTC15M-26MAR051900-00">R051900-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@82c</span>
+                        <span class="pnl positive">$+1.44</span>
+                        <span>$401.44</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>2</span>
+                        <span title="KXBTC15M-26MAR051915-15">R051915-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@84c</span>
+                        <span class="pnl positive">$+1.35</span>
+                        <span>$402.79</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>3</span>
+                        <span title="KXBTC15M-26MAR052130-30">R052130-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>8@91c</span>
+                        <span class="pnl positive">$+0.64</span>
+                        <span>$403.43</span>
+                    </div>
+
+                    <div class="trade-row loss">
+                        <span>4</span>
+                        <span title="KXBTC15M-26MAR052145-45">R052145-45</span>
+                        <span><span class="badge loss">#1</span></span>
+                        <span>9@82c</span>
+                        <span class="pnl negative">$-7.56</span>
+                        <span>$395.87</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>5</span>
+                        <span title="KXBTC15M-26MAR052330-30">R052330-30</span>
+                        <span><span class="badge recovery">#2</span></span>
+                        <span>48@83c</span>
+                        <span class="pnl negative">$-40.32</span>
+                        <span>$355.55</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>6</span>
+                        <span title="KXBTC15M-26MAR060015-15">R060015-15</span>
+                        <span><span class="badge recovery">#3</span></span>
+                        <span>343@85c</span>
+                        <span class="pnl positive">$+48.02</span>
+                        <span>$403.57</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>7</span>
+                        <span title="KXBTC15M-26MAR060045-45">R060045-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@84c</span>
+                        <span class="pnl positive">$+1.35</span>
+                        <span>$404.92</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>8</span>
+                        <span title="KXBTC15M-26MAR060100-00">R060100-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@89c</span>
+                        <span class="pnl positive">$+0.90</span>
+                        <span>$405.82</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>9</span>
+                        <span title="KXBTC15M-26MAR060115-15">R060115-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@88c</span>
+                        <span class="pnl positive">$+0.99</span>
+                        <span>$406.81</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>10</span>
+                        <span title="KXBTC15M-26MAR060200-00">R060200-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@81c</span>
+                        <span class="pnl positive">$+1.70</span>
+                        <span>$408.51</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>11</span>
+                        <span title="KXBTC15M-26MAR060300-00">R060300-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@86c</span>
+                        <span class="pnl positive">$+1.17</span>
+                        <span>$409.68</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>12</span>
+                        <span title="KXBTC15M-26MAR060400-00">R060400-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@89c</span>
+                        <span class="pnl positive">$+0.90</span>
+                        <span>$410.58</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>13</span>
+                        <span title="KXBTC15M-26MAR060415-15">R060415-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@87c</span>
+                        <span class="pnl positive">$+1.08</span>
+                        <span>$411.66</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>14</span>
+                        <span title="KXBTC15M-26MAR060430-30">R060430-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@87c</span>
+                        <span class="pnl positive">$+1.08</span>
+                        <span>$412.74</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>15</span>
+                        <span title="KXBTC15M-26MAR060515-15">R060515-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>8@92c</span>
+                        <span class="pnl positive">$+0.56</span>
+                        <span>$413.30</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>16</span>
+                        <span title="KXBTC15M-26MAR060900-00">R060900-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@87c</span>
+                        <span class="pnl positive">$+1.08</span>
+                        <span>$414.38</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>17</span>
+                        <span title="KXBTC15M-26MAR060930-30">R060930-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@89c</span>
+                        <span class="pnl positive">$+0.90</span>
+                        <span>$415.28</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>18</span>
+                        <span title="KXBTC15M-26MAR061145-45">R061145-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@87c</span>
+                        <span class="pnl positive">$+1.08</span>
+                        <span>$416.36</span>
+                    </div>
+
+                    <div class="trade-row loss">
+                        <span>19</span>
+                        <span title="KXBTC15M-26MAR061215-15">R061215-15</span>
+                        <span><span class="badge loss">#1</span></span>
+                        <span>10@83c</span>
+                        <span class="pnl negative">$-8.40</span>
+                        <span>$407.96</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>20</span>
+                        <span title="KXBTC15M-26MAR061415-15">R061415-15</span>
+                        <span><span class="badge recovery">#2</span></span>
+                        <span>53@83c</span>
+                        <span class="pnl positive">$+8.48</span>
+                        <span>$416.44</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>21</span>
+                        <span title="KXBTC15M-26MAR061500-00">R061500-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@89c</span>
+                        <span class="pnl positive">$+0.90</span>
+                        <span>$417.34</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>22</span>
+                        <span title="KXBTC15M-26MAR061600-00">R061600-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>8@93c</span>
+                        <span class="pnl positive">$+0.48</span>
+                        <span>$417.82</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>23</span>
+                        <span title="KXBTC15M-26MAR061800-00">R061800-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@88c</span>
+                        <span class="pnl positive">$+0.99</span>
+                        <span>$418.81</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>24</span>
+                        <span title="KXBTC15M-26MAR061945-45">R061945-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@88c</span>
+                        <span class="pnl positive">$+0.99</span>
+                        <span>$419.80</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>25</span>
+                        <span title="KXBTC15M-26MAR062000-00">R062000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@90c</span>
+                        <span class="pnl positive">$+0.81</span>
+                        <span>$420.61</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>26</span>
+                        <span title="KXBTC15M-26MAR062200-00">R062200-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@91c</span>
+                        <span class="pnl positive">$+0.72</span>
+                        <span>$421.33</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>27</span>
+                        <span title="KXBTC15M-26MAR062300-00">R062300-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@92c</span>
+                        <span class="pnl positive">$+0.63</span>
+                        <span>$421.96</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>28</span>
+                        <span title="KXBTC15M-26MAR062330-30">R062330-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@93c</span>
+                        <span class="pnl positive">$+0.54</span>
+                        <span>$422.50</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>29</span>
+                        <span title="KXBTC15M-26MAR070000-00">R070000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@89c</span>
+                        <span class="pnl positive">$+0.90</span>
+                        <span>$423.40</span>
+                    </div>
+
+                    <div class="trade-row loss">
+                        <span>30</span>
+                        <span title="KXBTC15M-26MAR070015-15">R070015-15</span>
+                        <span><span class="badge loss">#1</span></span>
+                        <span>10@81c</span>
+                        <span class="pnl negative">$-8.30</span>
+                        <span>$415.10</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>31</span>
+                        <span title="KXBTC15M-26MAR070100-00">R070100-00</span>
+                        <span><span class="badge recovery">#2</span></span>
+                        <span>49@81c</span>
+                        <span class="pnl positive">$+8.33</span>
+                        <span>$423.43</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>32</span>
+                        <span title="KXBTC15M-26MAR070230-30">R070230-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@87c</span>
+                        <span class="pnl positive">$+1.08</span>
+                        <span>$424.51</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>33</span>
+                        <span title="KXBTC15M-26MAR070315-15">R070315-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@85c</span>
+                        <span class="pnl positive">$+1.26</span>
+                        <span>$425.77</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>34</span>
+                        <span title="KXBTC15M-26MAR070345-45">R070345-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@91c</span>
+                        <span class="pnl positive">$+0.72</span>
+                        <span>$426.49</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>35</span>
+                        <span title="KXBTC15M-26MAR070415-15">R070415-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@91c</span>
+                        <span class="pnl positive">$+0.72</span>
+                        <span>$427.21</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>36</span>
+                        <span title="KXBTC15M-26MAR070445-45">R070445-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@92c</span>
+                        <span class="pnl positive">$+0.63</span>
+                        <span>$427.84</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>37</span>
+                        <span title="KXBTC15M-26MAR070515-15">R070515-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@90c</span>
+                        <span class="pnl positive">$+0.81</span>
+                        <span>$428.65</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>38</span>
+                        <span title="KXBTC15M-26MAR070545-45">R070545-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@92c</span>
+                        <span class="pnl positive">$+0.63</span>
+                        <span>$429.28</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>39</span>
+                        <span title="KXBTC15M-26MAR070930-30">R070930-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@88c</span>
+                        <span class="pnl positive">$+0.99</span>
+                        <span>$430.27</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>40</span>
+                        <span title="KXBTC15M-26MAR071230-30">R071230-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@91c</span>
+                        <span class="pnl positive">$+0.72</span>
+                        <span>$430.99</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>41</span>
+                        <span title="KXBTC15M-26MAR071400-00">R071400-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@81c</span>
+                        <span class="pnl positive">$+1.70</span>
+                        <span>$432.69</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>42</span>
+                        <span title="KXBTC15M-26MAR071445-45">R071445-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@87c</span>
+                        <span class="pnl positive">$+1.08</span>
+                        <span>$433.77</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>43</span>
+                        <span title="KXBTC15M-26MAR071515-15">R071515-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@92c</span>
+                        <span class="pnl positive">$+0.63</span>
+                        <span>$434.40</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>44</span>
+                        <span title="KXBTC15M-26MAR071615-15">R071615-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@85c</span>
+                        <span class="pnl positive">$+1.40</span>
+                        <span>$435.80</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>45</span>
+                        <span title="KXBTC15M-26MAR071715-15">R071715-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@91c</span>
+                        <span class="pnl positive">$+0.72</span>
+                        <span>$436.52</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>46</span>
+                        <span title="KXBTC15M-26MAR071730-30">R071730-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@88c</span>
+                        <span class="pnl positive">$+0.99</span>
+                        <span>$437.51</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>47</span>
+                        <span title="KXBTC15M-26MAR071745-45">R071745-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@89c</span>
+                        <span class="pnl positive">$+0.90</span>
+                        <span>$438.41</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>48</span>
+                        <span title="KXBTC15M-26MAR071845-45">R071845-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@86c</span>
+                        <span class="pnl positive">$+1.30</span>
+                        <span>$439.71</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>49</span>
+                        <span title="KXBTC15M-26MAR071930-30">R071930-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@92c</span>
+                        <span class="pnl positive">$+0.63</span>
+                        <span>$440.34</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>50</span>
+                        <span title="KXBTC15M-26MAR072000-00">R072000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@92c</span>
+                        <span class="pnl positive">$+0.63</span>
+                        <span>$440.97</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>51</span>
+                        <span title="KXBTC15M-26MAR072015-15">R072015-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@91c</span>
+                        <span class="pnl positive">$+0.72</span>
+                        <span>$441.69</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>52</span>
+                        <span title="KXBTC15M-26MAR072100-00">R072100-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@92c</span>
+                        <span class="pnl positive">$+0.63</span>
+                        <span>$442.32</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>53</span>
+                        <span title="KXBTC15M-26MAR072230-30">R072230-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@86c</span>
+                        <span class="pnl positive">$+1.30</span>
+                        <span>$443.62</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>54</span>
+                        <span title="KXBTC15M-26MAR072330-30">R072330-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@93c</span>
+                        <span class="pnl positive">$+0.54</span>
+                        <span>$444.16</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>55</span>
+                        <span title="KXBTC15M-26MAR072345-45">R072345-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@82c</span>
+                        <span class="pnl positive">$+1.60</span>
+                        <span>$445.76</span>
+                    </div>
+
+                    <div class="trade-row loss">
+                        <span>56</span>
+                        <span title="KXBTC15M-26MAR080115-15">R080115-15</span>
+                        <span><span class="badge loss">#1</span></span>
+                        <span>10@87c</span>
+                        <span class="pnl negative">$-8.80</span>
+                        <span>$436.96</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>57</span>
+                        <span title="KXBTC15M-26MAR080700-00">R080700-00</span>
+                        <span><span class="badge recovery">#2</span></span>
+                        <span>52@81c</span>
+                        <span class="pnl positive">$+8.84</span>
+                        <span>$445.80</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>58</span>
+                        <span title="KXBTC15M-26MAR080845-45">R080845-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@83c</span>
+                        <span class="pnl positive">$+1.60</span>
+                        <span>$447.40</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>59</span>
+                        <span title="KXBTC15M-26MAR080900-00">R080900-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@84c</span>
+                        <span class="pnl positive">$+1.50</span>
+                        <span>$448.90</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>60</span>
+                        <span title="KXBTC15M-26MAR080945-45">R080945-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@87c</span>
+                        <span class="pnl positive">$+1.20</span>
+                        <span>$450.10</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>61</span>
+                        <span title="KXBTC15M-26MAR081000-00">R081000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@90c</span>
+                        <span class="pnl positive">$+0.90</span>
+                        <span>$451.00</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>62</span>
+                        <span title="KXBTC15M-26MAR081130-30">R081130-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@89c</span>
+                        <span class="pnl positive">$+1.00</span>
+                        <span>$452.00</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>63</span>
+                        <span title="KXBTC15M-26MAR081445-45">R081445-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@87c</span>
+                        <span class="pnl positive">$+1.20</span>
+                        <span>$453.20</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>64</span>
+                        <span title="KXBTC15M-26MAR081545-45">R081545-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@93c</span>
+                        <span class="pnl positive">$+0.54</span>
+                        <span>$453.74</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>65</span>
+                        <span title="KXBTC15M-26MAR081630-30">R081630-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>11@81c</span>
+                        <span class="pnl positive">$+1.87</span>
+                        <span>$455.61</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>66</span>
+                        <span title="KXBTC15M-26MAR082000-00">R082000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@90c</span>
+                        <span class="pnl positive">$+0.90</span>
+                        <span>$456.51</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>67</span>
+                        <span title="KXBTC15M-26MAR082100-00">R082100-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@85c</span>
+                        <span class="pnl positive">$+1.40</span>
+                        <span>$457.91</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>68</span>
+                        <span title="KXBTC15M-26MAR082130-30">R082130-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>9@92c</span>
+                        <span class="pnl positive">$+0.63</span>
+                        <span>$458.54</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>69</span>
+                        <span title="KXBTC15M-26MAR082145-45">R082145-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>10@84c</span>
+                        <span class="pnl positive">$+1.50</span>
+                        <span>$460.04</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>70</span>
+                        <span title="KXBTC15M-26MAR082300-00">R082300-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>11@81c</span>
+                        <span class="pnl positive">$+1.87</span>
+                        <span>$461.91</span>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="trade-log">
+                <div class="trade-log-header" style="color: #6bcb77;">
+                    $4000: $4000 → $4648.25 (+648.25)
+                </div>
+                <div class="trade-log-body">
+                    <div class="trade-row header">
+                        <span>#</span>
+                        <span>Ticker</span>
+                        <span>Bet#</span>
+                        <span>Contracts</span>
+                        <span>P&L</span>
+                        <span>Balance</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>1</span>
+                        <span title="KXBTC15M-26MAR051900-00">R051900-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>97@82c</span>
+                        <span class="pnl positive">$+15.52</span>
+                        <span>$4015.52</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>2</span>
+                        <span title="KXBTC15M-26MAR051915-15">R051915-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>95@84c</span>
+                        <span class="pnl positive">$+14.25</span>
+                        <span>$4029.77</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>3</span>
+                        <span title="KXBTC15M-26MAR052130-30">R052130-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>88@91c</span>
+                        <span class="pnl positive">$+7.04</span>
+                        <span>$4036.81</span>
+                    </div>
+
+                    <div class="trade-row loss">
+                        <span>4</span>
+                        <span title="KXBTC15M-26MAR052145-45">R052145-45</span>
+                        <span><span class="badge loss">#1</span></span>
+                        <span>98@82c</span>
+                        <span class="pnl negative">$-82.32</span>
+                        <span>$3954.49</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>5</span>
+                        <span title="KXBTC15M-26MAR052330-30">R052330-30</span>
+                        <span><span class="badge recovery">#2</span></span>
+                        <span>515@83c</span>
+                        <span class="pnl negative">$-432.60</span>
+                        <span>$3521.89</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>6</span>
+                        <span title="KXBTC15M-26MAR060015-15">R060015-15</span>
+                        <span><span class="badge recovery">#3</span></span>
+                        <span>3678@85c</span>
+                        <span class="pnl positive">$+514.92</span>
+                        <span>$4036.81</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>7</span>
+                        <span title="KXBTC15M-26MAR060045-45">R060045-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>96@84c</span>
+                        <span class="pnl positive">$+14.40</span>
+                        <span>$4051.21</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>8</span>
+                        <span title="KXBTC15M-26MAR060100-00">R060100-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>91@89c</span>
+                        <span class="pnl positive">$+9.10</span>
+                        <span>$4060.31</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>9</span>
+                        <span title="KXBTC15M-26MAR060115-15">R060115-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>92@88c</span>
+                        <span class="pnl positive">$+10.12</span>
+                        <span>$4070.43</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>10</span>
+                        <span title="KXBTC15M-26MAR060200-00">R060200-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>100@81c</span>
+                        <span class="pnl positive">$+17.00</span>
+                        <span>$4087.43</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>11</span>
+                        <span title="KXBTC15M-26MAR060300-00">R060300-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>95@86c</span>
+                        <span class="pnl positive">$+12.35</span>
+                        <span>$4099.78</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>12</span>
+                        <span title="KXBTC15M-26MAR060400-00">R060400-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>92@89c</span>
+                        <span class="pnl positive">$+9.20</span>
+                        <span>$4108.98</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>13</span>
+                        <span title="KXBTC15M-26MAR060415-15">R060415-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>94@87c</span>
+                        <span class="pnl positive">$+11.28</span>
+                        <span>$4120.26</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>14</span>
+                        <span title="KXBTC15M-26MAR060430-30">R060430-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>94@87c</span>
+                        <span class="pnl positive">$+11.28</span>
+                        <span>$4131.54</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>15</span>
+                        <span title="KXBTC15M-26MAR060515-15">R060515-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>89@92c</span>
+                        <span class="pnl positive">$+6.23</span>
+                        <span>$4137.77</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>16</span>
+                        <span title="KXBTC15M-26MAR060900-00">R060900-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>95@87c</span>
+                        <span class="pnl positive">$+11.40</span>
+                        <span>$4149.17</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>17</span>
+                        <span title="KXBTC15M-26MAR060930-30">R060930-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>93@89c</span>
+                        <span class="pnl positive">$+9.30</span>
+                        <span>$4158.47</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>18</span>
+                        <span title="KXBTC15M-26MAR061145-45">R061145-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>95@87c</span>
+                        <span class="pnl positive">$+11.40</span>
+                        <span>$4169.87</span>
+                    </div>
+
+                    <div class="trade-row loss">
+                        <span>19</span>
+                        <span title="KXBTC15M-26MAR061215-15">R061215-15</span>
+                        <span><span class="badge loss">#1</span></span>
+                        <span>100@83c</span>
+                        <span class="pnl negative">$-84.00</span>
+                        <span>$4085.87</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>20</span>
+                        <span title="KXBTC15M-26MAR061415-15">R061415-15</span>
+                        <span><span class="badge recovery">#2</span></span>
+                        <span>525@83c</span>
+                        <span class="pnl positive">$+84.00</span>
+                        <span>$4169.87</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>21</span>
+                        <span title="KXBTC15M-26MAR061500-00">R061500-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>93@89c</span>
+                        <span class="pnl positive">$+9.30</span>
+                        <span>$4179.17</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>22</span>
+                        <span title="KXBTC15M-26MAR061600-00">R061600-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>89@93c</span>
+                        <span class="pnl positive">$+5.34</span>
+                        <span>$4184.51</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>23</span>
+                        <span title="KXBTC15M-26MAR061800-00">R061800-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>95@88c</span>
+                        <span class="pnl positive">$+10.45</span>
+                        <span>$4194.96</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>24</span>
+                        <span title="KXBTC15M-26MAR061945-45">R061945-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>95@88c</span>
+                        <span class="pnl positive">$+10.45</span>
+                        <span>$4205.41</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>25</span>
+                        <span title="KXBTC15M-26MAR062000-00">R062000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>93@90c</span>
+                        <span class="pnl positive">$+8.37</span>
+                        <span>$4213.78</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>26</span>
+                        <span title="KXBTC15M-26MAR062200-00">R062200-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>92@91c</span>
+                        <span class="pnl positive">$+7.36</span>
+                        <span>$4221.14</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>27</span>
+                        <span title="KXBTC15M-26MAR062300-00">R062300-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>91@92c</span>
+                        <span class="pnl positive">$+6.37</span>
+                        <span>$4227.51</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>28</span>
+                        <span title="KXBTC15M-26MAR062330-30">R062330-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>90@93c</span>
+                        <span class="pnl positive">$+5.40</span>
+                        <span>$4232.91</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>29</span>
+                        <span title="KXBTC15M-26MAR070000-00">R070000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>95@89c</span>
+                        <span class="pnl positive">$+9.50</span>
+                        <span>$4242.41</span>
+                    </div>
+
+                    <div class="trade-row loss">
+                        <span>30</span>
+                        <span title="KXBTC15M-26MAR070015-15">R070015-15</span>
+                        <span><span class="badge loss">#1</span></span>
+                        <span>104@81c</span>
+                        <span class="pnl negative">$-86.32</span>
+                        <span>$4156.09</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>31</span>
+                        <span title="KXBTC15M-26MAR070100-00">R070100-00</span>
+                        <span><span class="badge recovery">#2</span></span>
+                        <span>508@81c</span>
+                        <span class="pnl positive">$+86.36</span>
+                        <span>$4242.45</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>32</span>
+                        <span title="KXBTC15M-26MAR070230-30">R070230-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>97@87c</span>
+                        <span class="pnl positive">$+11.64</span>
+                        <span>$4254.09</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>33</span>
+                        <span title="KXBTC15M-26MAR070315-15">R070315-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>100@85c</span>
+                        <span class="pnl positive">$+14.00</span>
+                        <span>$4268.09</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>34</span>
+                        <span title="KXBTC15M-26MAR070345-45">R070345-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>93@91c</span>
+                        <span class="pnl positive">$+7.44</span>
+                        <span>$4275.53</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>35</span>
+                        <span title="KXBTC15M-26MAR070415-15">R070415-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>93@91c</span>
+                        <span class="pnl positive">$+7.44</span>
+                        <span>$4282.97</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>36</span>
+                        <span title="KXBTC15M-26MAR070445-45">R070445-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>93@92c</span>
+                        <span class="pnl positive">$+6.51</span>
+                        <span>$4289.48</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>37</span>
+                        <span title="KXBTC15M-26MAR070515-15">R070515-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>95@90c</span>
+                        <span class="pnl positive">$+8.55</span>
+                        <span>$4298.03</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>38</span>
+                        <span title="KXBTC15M-26MAR070545-45">R070545-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>93@92c</span>
+                        <span class="pnl positive">$+6.51</span>
+                        <span>$4304.54</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>39</span>
+                        <span title="KXBTC15M-26MAR070930-30">R070930-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>97@88c</span>
+                        <span class="pnl positive">$+10.67</span>
+                        <span>$4315.21</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>40</span>
+                        <span title="KXBTC15M-26MAR071230-30">R071230-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>94@91c</span>
+                        <span class="pnl positive">$+7.52</span>
+                        <span>$4322.73</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>41</span>
+                        <span title="KXBTC15M-26MAR071400-00">R071400-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>106@81c</span>
+                        <span class="pnl positive">$+18.02</span>
+                        <span>$4340.75</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>42</span>
+                        <span title="KXBTC15M-26MAR071445-45">R071445-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>99@87c</span>
+                        <span class="pnl positive">$+11.88</span>
+                        <span>$4352.63</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>43</span>
+                        <span title="KXBTC15M-26MAR071515-15">R071515-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>94@92c</span>
+                        <span class="pnl positive">$+6.58</span>
+                        <span>$4359.21</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>44</span>
+                        <span title="KXBTC15M-26MAR071615-15">R071615-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>102@85c</span>
+                        <span class="pnl positive">$+14.28</span>
+                        <span>$4373.49</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>45</span>
+                        <span title="KXBTC15M-26MAR071715-15">R071715-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>96@91c</span>
+                        <span class="pnl positive">$+7.68</span>
+                        <span>$4381.17</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>46</span>
+                        <span title="KXBTC15M-26MAR071730-30">R071730-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>99@88c</span>
+                        <span class="pnl positive">$+10.89</span>
+                        <span>$4392.06</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>47</span>
+                        <span title="KXBTC15M-26MAR071745-45">R071745-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>98@89c</span>
+                        <span class="pnl positive">$+9.80</span>
+                        <span>$4401.86</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>48</span>
+                        <span title="KXBTC15M-26MAR071845-45">R071845-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>102@86c</span>
+                        <span class="pnl positive">$+13.26</span>
+                        <span>$4415.12</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>49</span>
+                        <span title="KXBTC15M-26MAR071930-30">R071930-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>95@92c</span>
+                        <span class="pnl positive">$+6.65</span>
+                        <span>$4421.77</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>50</span>
+                        <span title="KXBTC15M-26MAR072000-00">R072000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>96@92c</span>
+                        <span class="pnl positive">$+6.72</span>
+                        <span>$4428.49</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>51</span>
+                        <span title="KXBTC15M-26MAR072015-15">R072015-15</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>97@91c</span>
+                        <span class="pnl positive">$+7.76</span>
+                        <span>$4436.25</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>52</span>
+                        <span title="KXBTC15M-26MAR072100-00">R072100-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>96@92c</span>
+                        <span class="pnl positive">$+6.72</span>
+                        <span>$4442.97</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>53</span>
+                        <span title="KXBTC15M-26MAR072230-30">R072230-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>103@86c</span>
+                        <span class="pnl positive">$+13.39</span>
+                        <span>$4456.36</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>54</span>
+                        <span title="KXBTC15M-26MAR072330-30">R072330-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>95@93c</span>
+                        <span class="pnl positive">$+5.70</span>
+                        <span>$4462.06</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>55</span>
+                        <span title="KXBTC15M-26MAR072345-45">R072345-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>108@82c</span>
+                        <span class="pnl positive">$+17.28</span>
+                        <span>$4479.34</span>
+                    </div>
+
+                    <div class="trade-row loss">
+                        <span>56</span>
+                        <span title="KXBTC15M-26MAR080115-15">R080115-15</span>
+                        <span><span class="badge loss">#1</span></span>
+                        <span>102@87c</span>
+                        <span class="pnl negative">$-89.76</span>
+                        <span>$4389.58</span>
+                    </div>
+
+                    <div class="trade-row recovery">
+                        <span>57</span>
+                        <span title="KXBTC15M-26MAR080700-00">R080700-00</span>
+                        <span><span class="badge recovery">#2</span></span>
+                        <span>528@81c</span>
+                        <span class="pnl positive">$+89.76</span>
+                        <span>$4479.34</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>58</span>
+                        <span title="KXBTC15M-26MAR080845-45">R080845-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>107@83c</span>
+                        <span class="pnl positive">$+17.12</span>
+                        <span>$4496.46</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>59</span>
+                        <span title="KXBTC15M-26MAR080900-00">R080900-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>107@84c</span>
+                        <span class="pnl positive">$+16.05</span>
+                        <span>$4512.51</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>60</span>
+                        <span title="KXBTC15M-26MAR080945-45">R080945-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>103@87c</span>
+                        <span class="pnl positive">$+12.36</span>
+                        <span>$4524.87</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>61</span>
+                        <span title="KXBTC15M-26MAR081000-00">R081000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>100@90c</span>
+                        <span class="pnl positive">$+9.00</span>
+                        <span>$4533.87</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>62</span>
+                        <span title="KXBTC15M-26MAR081130-30">R081130-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>101@89c</span>
+                        <span class="pnl positive">$+10.10</span>
+                        <span>$4543.97</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>63</span>
+                        <span title="KXBTC15M-26MAR081445-45">R081445-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>104@87c</span>
+                        <span class="pnl positive">$+12.48</span>
+                        <span>$4556.45</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>64</span>
+                        <span title="KXBTC15M-26MAR081545-45">R081545-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>97@93c</span>
+                        <span class="pnl positive">$+5.82</span>
+                        <span>$4562.27</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>65</span>
+                        <span title="KXBTC15M-26MAR081630-30">R081630-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>112@81c</span>
+                        <span class="pnl positive">$+19.04</span>
+                        <span>$4581.31</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>66</span>
+                        <span title="KXBTC15M-26MAR082000-00">R082000-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>101@90c</span>
+                        <span class="pnl positive">$+9.09</span>
+                        <span>$4590.40</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>67</span>
+                        <span title="KXBTC15M-26MAR082100-00">R082100-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>108@85c</span>
+                        <span class="pnl positive">$+15.12</span>
+                        <span>$4605.52</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>68</span>
+                        <span title="KXBTC15M-26MAR082130-30">R082130-30</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>100@92c</span>
+                        <span class="pnl positive">$+7.00</span>
+                        <span>$4612.52</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>69</span>
+                        <span title="KXBTC15M-26MAR082145-45">R082145-45</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>109@84c</span>
+                        <span class="pnl positive">$+16.35</span>
+                        <span>$4628.87</span>
+                    </div>
+
+                    <div class="trade-row ">
+                        <span>70</span>
+                        <span title="KXBTC15M-26MAR082300-00">R082300-00</span>
+                        <span><span class="badge win">#1</span></span>
+                        <span>114@81c</span>
+                        <span class="pnl positive">$+19.38</span>
+                        <span>$4648.25</span>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <h2>Key Insights</h2>
+
+        <div class="success">
+            <strong>$60 Bankroll Survived!</strong><br>
+            The $60 bankroll was able to afford all recovery bets and finished profitable.
+            This confirms $60 is above the minimum viable bankroll threshold.
+        </div>
+
+        <div class="insight">
+            <strong>Why Larger Bankrolls Perform Better:</strong><br>
+            • Base bets scale with bankroll (2% rule)<br>
+            • Recovery bets scale proportionally<br>
+            • Larger bankrolls have more buffer to survive drawdowns<br>
+            • The 1-contract minimum doesn't bottleneck larger accounts
+        </div>
+
+        <div class="insight">
+            <strong>The Math:</strong><br>
+            • After 1 loss at 85c: Need ~7x base contracts to recover<br>
+            • After 2 losses: Need ~50x base contracts to recover<br>
+            • $60 @ 2% = $1.20 base bet ≈ 1-2 contracts<br>
+            • $400 @ 2% = $8 base bet ≈ 9 contracts<br>
+            • Recovery scales the same multiplier, but larger base = larger absolute cushion
+        </div>
+    </div>
+</body>
+</html>

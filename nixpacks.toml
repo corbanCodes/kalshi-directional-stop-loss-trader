@@ -1,0 +1,14 @@
+[phases.setup]
+nixPkgs = ["python311", "python311Packages.pip"]
+
+[phases.install]
+cmds = [
+    "python3 -m venv /opt/venv",
+    "/opt/venv/bin/pip install -r requirements.txt"
+]
+
+[start]
+cmd = "/opt/venv/bin/python main.py run"
+
+[variables]
+PIP_NO_CACHE_DIR = "1"

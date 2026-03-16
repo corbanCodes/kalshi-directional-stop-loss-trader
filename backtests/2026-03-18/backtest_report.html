@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Backtest Results - March 18, 2026</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', monospace; background: #0a0a0a; color: #e0e0e0; padding: 20px; }
+        h1 { color: #6bcb77; margin-bottom: 10px; }
+        h2 { color: #4ecdc4; margin: 20px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        h3 { color: #ffd93d; margin: 15px 0 10px 0; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
+        .card { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 15px; text-align: center; }
+        .card .value { font-size: 1.8rem; font-weight: bold; color: #6bcb77; }
+        .card .label { color: #888; font-size: 0.9rem; margin-top: 5px; }
+        .card.warn .value { color: #ffd93d; }
+        .card.danger .value { color: #ff6b6b; }
+        .card.good .value { color: #6bcb77; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.85rem; }
+        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #333; }
+        th { background: #1a1a1a; color: #6bcb77; }
+        tr:hover { background: #1a1a1a; }
+        .win { color: #6bcb77; }
+        .loss { color: #ff6b6b; }
+        .recovery { background: rgba(255, 217, 61, 0.1); }
+        .bust { background: rgba(255, 107, 107, 0.2); }
+        .comparison { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0; }
+        .comparison-card { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 20px; }
+        .comparison-card h3 { margin-bottom: 15px; }
+        .stat-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #222; }
+        .chart { background: #1a1a1a; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .bar { height: 20px; background: #6bcb77; margin: 2px 0; border-radius: 3px; transition: width 0.3s; }
+        .bar.negative { background: #ff6b6b; }
+        .trade-list { max-height: 400px; overflow-y: auto; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; }
+        .badge.win { background: rgba(107, 203, 119, 0.2); color: #6bcb77; }
+        .badge.loss { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; }
+        .badge.recovery { background: rgba(255, 217, 61, 0.2); color: #ffd93d; }
+        .insight { background: rgba(78, 205, 196, 0.1); border-left: 3px solid #4ecdc4; padding: 15px; margin: 15px 0; }
+        .warning { background: rgba(255, 107, 107, 0.1); border-left: 3px solid #ff6b6b; padding: 15px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>15-Minute Strategy Backtest</h1>
+        <p style="color:#888;">Data: March 5-9, 2026 | Generated: March 18, 2026</p>
+
+        <h2>Raw Opportunity Analysis</h2>
+        <div class="summary-grid">
+            <div class="card">
+                <div class="value">78</div>
+                <div class="label">Total Opportunities (80-92c)</div>
+            </div>
+            <div class="card good">
+                <div class="value">73/5</div>
+                <div class="label">Wins/Losses (93.6%)</div>
+            </div>
+            <div class="card good">
+                <div class="value">1</div>
+                <div class="label">Max Losing Streak</div>
+            </div>
+            <div class="card">
+                <div class="value">0</div>
+                <div class="label">Times 2+ Losses in Row</div>
+            </div>
+        </div>
+
+        <div class="insight">
+            <strong>Key Finding:</strong> The raw data shows 93.6% win rate with max 1 consecutive losses.
+            No 3+ consecutive loss sequences observed.
+        </div>
+
+        <h2>Bankroll Comparison</h2>
+        <div class="comparison">
+
+            <div class="comparison-card">
+                <h3>$40 Bankroll</h3>
+                <div class="stat-row">
+                    <span>Final</span>
+                    <span class="danger">$34.51</span>
+                </div>
+                <div class="stat-row">
+                    <span>P&L</span>
+                    <span class="danger">$-5.49 (-13.7%)</span>
+                </div>
+                <div class="stat-row">
+                    <span>Trades</span>
+                    <span>6 (3W / 2L)</span>
+                </div>
+                <div class="stat-row">
+                    <span>Win Rate</span>
+                    <span>60.0%</span>
+                </div>
+                <div class="stat-row">
+                    <span>Max Drawdown</span>
+                    <span class="warn">14.6%</span>
+                </div>
+                <div class="stat-row">
+                    <span>Status</span>
+                    <span class="loss">(Ended in Recovery!)</span>
+                </div>
+            </div>
+
+            <div class="comparison-card">
+                <h3>$400 Bankroll</h3>
+                <div class="stat-row">
+                    <span>Final</span>
+                    <span class="good">$461.91</span>
+                </div>
+                <div class="stat-row">
+                    <span>P&L</span>
+                    <span class="good">$+61.91 (+15.5%)</span>
+                </div>
+                <div class="stat-row">
+                    <span>Trades</span>
+                    <span>70 (65W / 5L)</span>
+                </div>
+                <div class="stat-row">
+                    <span>Win Rate</span>
+                    <span>92.9%</span>
+                </div>
+                <div class="stat-row">
+                    <span>Max Drawdown</span>
+                    <span class="warn">23.0%</span>
+                </div>
+                <div class="stat-row">
+                    <span>Status</span>
+                    <span class="win">Clean</span>
+                </div>
+            </div>
+
+            <div class="comparison-card">
+                <h3>$4000 Bankroll</h3>
+                <div class="stat-row">
+                    <span>Final</span>
+                    <span class="good">$4648.25</span>
+                </div>
+                <div class="stat-row">
+                    <span>P&L</span>
+                    <span class="good">$+648.25 (+16.2%)</span>
+                </div>
+                <div class="stat-row">
+                    <span>Trades</span>
+                    <span>70 (65W / 5L)</span>
+                </div>
+                <div class="stat-row">
+                    <span>Win Rate</span>
+                    <span>92.9%</span>
+                </div>
+                <div class="stat-row">
+                    <span>Max Drawdown</span>
+                    <span class="warn">24.2%</span>
+                </div>
+                <div class="stat-row">
+                    <span>Status</span>
+                    <span class="win">Clean</span>
+                </div>
+            </div>
+
+        </div>
+
+        <h2>Trade-by-Trade Analysis ($400 Bankroll)</h2>
+        <div class="chart">
+            <h3>Bankroll Over Time</h3>
+            <div style="display: flex; align-items: end; height: 150px; gap: 2px; padding: 10px 0;">
+<div style="flex:1; background:#6bcb77; height:86.90870515901365%; min-width:3px;" title="Trade 1: $401.44"></div><div style="flex:1; background:#6bcb77; height:87.2009698859085%; min-width:3px;" title="Trade 2: $402.79"></div><div style="flex:1; background:#6bcb77; height:87.3395250156957%; min-width:3px;" title="Trade 3: $403.43"></div><div style="flex:1; background:#ff6b6b; height:85.70284254508454%; min-width:3px;" title="Trade 4: $395.87"></div><div style="flex:1; background:#ff6b6b; height:76.9738693684917%; min-width:3px;" title="Trade 5: $355.55"></div><div style="flex:1; background:#6bcb77; height:87.36983395033664%; min-width:3px;" title="Trade 6: $403.57"></div><div style="flex:1; background:#6bcb77; height:87.6620986772315%; min-width:3px;" title="Trade 7: $404.92"></div><div style="flex:1; background:#6bcb77; height:87.85694182849471%; min-width:3px;" title="Trade 8: $405.82"></div><div style="flex:1; background:#6bcb77; height:88.07126929488427%; min-width:3px;" title="Trade 9: $406.81"></div><div style="flex:1; background:#6bcb77; height:88.4393063583815%; min-width:3px;" title="Trade 10: $408.51"></div><div style="flex:1; background:#6bcb77; height:88.6926024550237%; min-width:3px;" title="Trade 11: $409.68"></div><div style="flex:1; background:#6bcb77; height:88.88744560628693%; min-width:3px;" title="Trade 12: $410.58"></div><div style="flex:1; background:#6bcb77; height:89.12125738780281%; min-width:3px;" title="Trade 13: $411.66"></div><div style="flex:1; background:#6bcb77; height:89.35506916931868%; min-width:3px;" title="Trade 14: $412.74"></div><div style="flex:1; background:#6bcb77; height:89.47630490788248%; min-width:3px;" title="Trade 15: $413.30"></div><div style="flex:1; background:#6bcb77; height:89.71011668939835%; min-width:3px;" title="Trade 16: $414.38"></div><div style="flex:1; background:#6bcb77; height:89.90495984066158%; min-width:3px;" title="Trade 17: $415.28"></div><div style="flex:1; background:#6bcb77; height:90.13877162217744%; min-width:3px;" title="Trade 18: $416.36"></div><div style="flex:1; background:#ff6b6b; height:88.32023554372061%; min-width:3px;" title="Trade 19: $407.96"></div><div style="flex:1; background:#6bcb77; height:90.15609101340087%; min-width:3px;" title="Trade 20: $416.44"></div><div style="flex:1; background:#6bcb77; height:90.35093416466408%; min-width:3px;" title="Trade 21: $417.34"></div><div style="flex:1; background:#6bcb77; height:90.45485051200448%; min-width:3px;" title="Trade 22: $417.82"></div><div style="flex:1; background:#6bcb77; height:90.66917797839405%; min-width:3px;" title="Trade 23: $418.81"></div><div style="flex:1; background:#6bcb77; height:90.8835054447836%; min-width:3px;" title="Trade 24: $419.80"></div><div style="flex:1; background:#6bcb77; height:91.05886428092052%; min-width:3px;" title="Trade 25: $420.61"></div><div style="flex:1; background:#6bcb77; height:91.2147388019311%; min-width:3px;" title="Trade 26: $421.33"></div><div style="flex:1; background:#6bcb77; height:91.35112900781537%; min-width:3px;" title="Trade 27: $421.96"></div><div style="flex:1; background:#6bcb77; height:91.46803489857331%; min-width:3px;" title="Trade 28: $422.50"></div><div style="flex:1; background:#6bcb77; height:91.66287804983654%; min-width:3px;" title="Trade 29: $423.40"></div><div style="flex:1; background:#ff6b6b; height:89.86599121040895%; min-width:3px;" title="Trade 30: $415.10"></div><div style="flex:1; background:#6bcb77; height:91.66937282154531%; min-width:3px;" title="Trade 31: $423.43"></div><div style="flex:1; background:#6bcb77; height:91.90318460306118%; min-width:3px;" title="Trade 32: $424.51"></div><div style="flex:1; background:#6bcb77; height:92.17596501482971%; min-width:3px;" title="Trade 33: $425.77"></div><div style="flex:1; background:#6bcb77; height:92.3318395358403%; min-width:3px;" title="Trade 34: $426.49"></div><div style="flex:1; background:#6bcb77; height:92.48771405685089%; min-width:3px;" title="Trade 35: $427.21"></div><div style="flex:1; background:#6bcb77; height:92.62410426273516%; min-width:3px;" title="Trade 36: $427.84"></div><div style="flex:1; background:#6bcb77; height:92.79946309887205%; min-width:3px;" title="Trade 37: $428.65"></div><div style="flex:1; background:#6bcb77; height:92.93585330475632%; min-width:3px;" title="Trade 38: $429.28"></div><div style="flex:1; background:#6bcb77; height:93.15018077114588%; min-width:3px;" title="Trade 39: $430.27"></div><div style="flex:1; background:#6bcb77; height:93.30605529215647%; min-width:3px;" title="Trade 40: $430.99"></div><div style="flex:1; background:#6bcb77; height:93.6740923556537%; min-width:3px;" title="Trade 41: $432.69"></div><div style="flex:1; background:#6bcb77; height:93.90790413716957%; min-width:3px;" title="Trade 42: $433.77"></div><div style="flex:1; background:#6bcb77; height:94.04429434305383%; min-width:3px;" title="Trade 43: $434.40"></div><div style="flex:1; background:#6bcb77; height:94.3473836894633%; min-width:3px;" title="Trade 44: $435.80"></div><div style="flex:1; background:#6bcb77; height:94.50325821047389%; min-width:3px;" title="Trade 45: $436.52"></div><div style="flex:1; background:#6bcb77; height:94.71758567686345%; min-width:3px;" title="Trade 46: $437.51"></div><div style="flex:1; background:#6bcb77; height:94.91242882812668%; min-width:3px;" title="Trade 47: $438.41"></div><div style="flex:1; background:#6bcb77; height:95.19386893550691%; min-width:3px;" title="Trade 48: $439.71"></div><div style="flex:1; background:#6bcb77; height:95.33025914139117%; min-width:3px;" title="Trade 49: $440.34"></div><div style="flex:1; background:#6bcb77; height:95.46664934727544%; min-width:3px;" title="Trade 50: $440.97"></div><div style="flex:1; background:#6bcb77; height:95.62252386828602%; min-width:3px;" title="Trade 51: $441.69"></div><div style="flex:1; background:#6bcb77; height:95.75891407417029%; min-width:3px;" title="Trade 52: $442.32"></div><div style="flex:1; background:#6bcb77; height:96.04035418155051%; min-width:3px;" title="Trade 53: $443.62"></div><div style="flex:1; background:#6bcb77; height:96.15726007230846%; min-width:3px;" title="Trade 54: $444.16"></div><div style="flex:1; background:#6bcb77; height:96.50364789677643%; min-width:3px;" title="Trade 55: $445.76"></div><div style="flex:1; background:#ff6b6b; height:94.59851486220259%; min-width:3px;" title="Trade 56: $436.96"></div><div style="flex:1; background:#6bcb77; height:96.51230759238814%; min-width:3px;" title="Trade 57: $445.80"></div><div style="flex:1; background:#6bcb77; height:96.85869541685611%; min-width:3px;" title="Trade 58: $447.40"></div><div style="flex:1; background:#6bcb77; height:97.18343400229483%; min-width:3px;" title="Trade 59: $448.90"></div><div style="flex:1; background:#6bcb77; height:97.4432248706458%; min-width:3px;" title="Trade 60: $450.10"></div><div style="flex:1; background:#6bcb77; height:97.63806802190904%; min-width:3px;" title="Trade 61: $451.00"></div><div style="flex:1; background:#6bcb77; height:97.85456041220152%; min-width:3px;" title="Trade 62: $452.00"></div><div style="flex:1; background:#6bcb77; height:98.1143512805525%; min-width:3px;" title="Trade 63: $453.20"></div><div style="flex:1; background:#6bcb77; height:98.23125717131043%; min-width:3px;" title="Trade 64: $453.74"></div><div style="flex:1; background:#6bcb77; height:98.63609794115737%; min-width:3px;" title="Trade 65: $455.61"></div><div style="flex:1; background:#6bcb77; height:98.83094109242062%; min-width:3px;" title="Trade 66: $456.51"></div><div style="flex:1; background:#6bcb77; height:99.13403043883008%; min-width:3px;" title="Trade 67: $457.91"></div><div style="flex:1; background:#6bcb77; height:99.27042064471433%; min-width:3px;" title="Trade 68: $458.54"></div><div style="flex:1; background:#6bcb77; height:99.59515923015306%; min-width:3px;" title="Trade 69: $460.04"></div><div style="flex:1; background:#6bcb77; height:100.0%; min-width:3px;" title="Trade 70: $461.91"></div>
+            </div>
+        </div>
+
+        <div class="trade-list">
+        <table>
+            <tr>
+                <th>#</th>
+                <th>Ticker</th>
+                <th>Side</th>
+                <th>Price</th>
+                <th>Contracts</th>
+                <th>Cost</th>
+                <th>Outcome</th>
+                <th>P&L</th>
+                <th>Bankroll</th>
+                <th>Bet #</th>
+            </tr>
+
+            <tr class="">
+                <td>1</td>
+                <td>-26MAR051900-00</td>
+                <td>NO</td>
+                <td>82c</td>
+                <td>9</td>
+                <td>$7.38</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.44</td>
+                <td>$401.44</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>2</td>
+                <td>-26MAR051915-15</td>
+                <td>YES</td>
+                <td>84c</td>
+                <td>9</td>
+                <td>$7.56</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.35</td>
+                <td>$402.79</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>3</td>
+                <td>-26MAR052130-30</td>
+                <td>NO</td>
+                <td>91c</td>
+                <td>8</td>
+                <td>$7.28</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.64</td>
+                <td>$403.43</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>4</td>
+                <td>-26MAR052145-45</td>
+                <td>NO</td>
+                <td>82c</td>
+                <td>9</td>
+                <td>$7.38</td>
+                <td><span class="badge loss">LOSS</span></td>
+                <td class="loss">$-7.56</td>
+                <td>$395.87</td>
+                <td><span class="badge loss">#1</span></td>
+            </tr>
+
+            <tr class="recovery">
+                <td>5</td>
+                <td>-26MAR052330-30</td>
+                <td>YES</td>
+                <td>83c</td>
+                <td>48</td>
+                <td>$39.84</td>
+                <td><span class="badge loss">LOSS</span></td>
+                <td class="loss">$-40.32</td>
+                <td>$355.55</td>
+                <td><span class="badge recovery">#2</span></td>
+            </tr>
+
+            <tr class="recovery">
+                <td>6</td>
+                <td>-26MAR060015-15</td>
+                <td>NO</td>
+                <td>85c</td>
+                <td>343</td>
+                <td>$291.55</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+48.02</td>
+                <td>$403.57</td>
+                <td><span class="badge recovery">#3</span></td>
+            </tr>
+
+            <tr class="">
+                <td>7</td>
+                <td>-26MAR060045-45</td>
+                <td>NO</td>
+                <td>84c</td>
+                <td>9</td>
+                <td>$7.56</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.35</td>
+                <td>$404.92</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>8</td>
+                <td>-26MAR060100-00</td>
+                <td>YES</td>
+                <td>89c</td>
+                <td>9</td>
+                <td>$8.01</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.90</td>
+                <td>$405.82</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>9</td>
+                <td>-26MAR060115-15</td>
+                <td>NO</td>
+                <td>88c</td>
+                <td>9</td>
+                <td>$7.92</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.99</td>
+                <td>$406.81</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>10</td>
+                <td>-26MAR060200-00</td>
+                <td>NO</td>
+                <td>81c</td>
+                <td>10</td>
+                <td>$8.10</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.70</td>
+                <td>$408.51</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>11</td>
+                <td>-26MAR060300-00</td>
+                <td>YES</td>
+                <td>86c</td>
+                <td>9</td>
+                <td>$7.74</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.17</td>
+                <td>$409.68</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>12</td>
+                <td>-26MAR060400-00</td>
+                <td>NO</td>
+                <td>89c</td>
+                <td>9</td>
+                <td>$8.01</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.90</td>
+                <td>$410.58</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>13</td>
+                <td>-26MAR060415-15</td>
+                <td>NO</td>
+                <td>87c</td>
+                <td>9</td>
+                <td>$7.83</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.08</td>
+                <td>$411.66</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>14</td>
+                <td>-26MAR060430-30</td>
+                <td>NO</td>
+                <td>87c</td>
+                <td>9</td>
+                <td>$7.83</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.08</td>
+                <td>$412.74</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>15</td>
+                <td>-26MAR060515-15</td>
+                <td>YES</td>
+                <td>92c</td>
+                <td>8</td>
+                <td>$7.36</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.56</td>
+                <td>$413.30</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>16</td>
+                <td>-26MAR060900-00</td>
+                <td>NO</td>
+                <td>87c</td>
+                <td>9</td>
+                <td>$7.83</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.08</td>
+                <td>$414.38</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>17</td>
+                <td>-26MAR060930-30</td>
+                <td>YES</td>
+                <td>89c</td>
+                <td>9</td>
+                <td>$8.01</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.90</td>
+                <td>$415.28</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>18</td>
+                <td>-26MAR061145-45</td>
+                <td>YES</td>
+                <td>87c</td>
+                <td>9</td>
+                <td>$7.83</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.08</td>
+                <td>$416.36</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>19</td>
+                <td>-26MAR061215-15</td>
+                <td>YES</td>
+                <td>83c</td>
+                <td>10</td>
+                <td>$8.30</td>
+                <td><span class="badge loss">LOSS</span></td>
+                <td class="loss">$-8.40</td>
+                <td>$407.96</td>
+                <td><span class="badge loss">#1</span></td>
+            </tr>
+
+            <tr class="recovery">
+                <td>20</td>
+                <td>-26MAR061415-15</td>
+                <td>YES</td>
+                <td>83c</td>
+                <td>53</td>
+                <td>$43.99</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+8.48</td>
+                <td>$416.44</td>
+                <td><span class="badge recovery">#2</span></td>
+            </tr>
+
+            <tr class="">
+                <td>21</td>
+                <td>-26MAR061500-00</td>
+                <td>NO</td>
+                <td>89c</td>
+                <td>9</td>
+                <td>$8.01</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.90</td>
+                <td>$417.34</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>22</td>
+                <td>-26MAR061600-00</td>
+                <td>YES</td>
+                <td>93c</td>
+                <td>8</td>
+                <td>$7.44</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.48</td>
+                <td>$417.82</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>23</td>
+                <td>-26MAR061800-00</td>
+                <td>YES</td>
+                <td>88c</td>
+                <td>9</td>
+                <td>$7.92</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.99</td>
+                <td>$418.81</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>24</td>
+                <td>-26MAR061945-45</td>
+                <td>YES</td>
+                <td>88c</td>
+                <td>9</td>
+                <td>$7.92</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.99</td>
+                <td>$419.80</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>25</td>
+                <td>-26MAR062000-00</td>
+                <td>YES</td>
+                <td>90c</td>
+                <td>9</td>
+                <td>$8.10</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.81</td>
+                <td>$420.61</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>26</td>
+                <td>-26MAR062200-00</td>
+                <td>YES</td>
+                <td>91c</td>
+                <td>9</td>
+                <td>$8.19</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.72</td>
+                <td>$421.33</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>27</td>
+                <td>-26MAR062300-00</td>
+                <td>NO</td>
+                <td>92c</td>
+                <td>9</td>
+                <td>$8.28</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.63</td>
+                <td>$421.96</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>28</td>
+                <td>-26MAR062330-30</td>
+                <td>YES</td>
+                <td>93c</td>
+                <td>9</td>
+                <td>$8.37</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.54</td>
+                <td>$422.50</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>29</td>
+                <td>-26MAR070000-00</td>
+                <td>NO</td>
+                <td>89c</td>
+                <td>9</td>
+                <td>$8.01</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.90</td>
+                <td>$423.40</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>30</td>
+                <td>-26MAR070015-15</td>
+                <td>YES</td>
+                <td>81c</td>
+                <td>10</td>
+                <td>$8.10</td>
+                <td><span class="badge loss">LOSS</span></td>
+                <td class="loss">$-8.30</td>
+                <td>$415.10</td>
+                <td><span class="badge loss">#1</span></td>
+            </tr>
+
+            <tr class="recovery">
+                <td>31</td>
+                <td>-26MAR070100-00</td>
+                <td>NO</td>
+                <td>81c</td>
+                <td>49</td>
+                <td>$39.69</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+8.33</td>
+                <td>$423.43</td>
+                <td><span class="badge recovery">#2</span></td>
+            </tr>
+
+            <tr class="">
+                <td>32</td>
+                <td>-26MAR070230-30</td>
+                <td>YES</td>
+                <td>87c</td>
+                <td>9</td>
+                <td>$7.83</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.08</td>
+                <td>$424.51</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>33</td>
+                <td>-26MAR070315-15</td>
+                <td>NO</td>
+                <td>85c</td>
+                <td>9</td>
+                <td>$7.65</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.26</td>
+                <td>$425.77</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>34</td>
+                <td>-26MAR070345-45</td>
+                <td>NO</td>
+                <td>91c</td>
+                <td>9</td>
+                <td>$8.19</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.72</td>
+                <td>$426.49</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>35</td>
+                <td>-26MAR070415-15</td>
+                <td>YES</td>
+                <td>91c</td>
+                <td>9</td>
+                <td>$8.19</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.72</td>
+                <td>$427.21</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>36</td>
+                <td>-26MAR070445-45</td>
+                <td>YES</td>
+                <td>92c</td>
+                <td>9</td>
+                <td>$8.28</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.63</td>
+                <td>$427.84</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>37</td>
+                <td>-26MAR070515-15</td>
+                <td>YES</td>
+                <td>90c</td>
+                <td>9</td>
+                <td>$8.10</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.81</td>
+                <td>$428.65</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>38</td>
+                <td>-26MAR070545-45</td>
+                <td>YES</td>
+                <td>92c</td>
+                <td>9</td>
+                <td>$8.28</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.63</td>
+                <td>$429.28</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>39</td>
+                <td>-26MAR070930-30</td>
+                <td>YES</td>
+                <td>88c</td>
+                <td>9</td>
+                <td>$7.92</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.99</td>
+                <td>$430.27</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>40</td>
+                <td>-26MAR071230-30</td>
+                <td>YES</td>
+                <td>91c</td>
+                <td>9</td>
+                <td>$8.19</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.72</td>
+                <td>$430.99</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>41</td>
+                <td>-26MAR071400-00</td>
+                <td>NO</td>
+                <td>81c</td>
+                <td>10</td>
+                <td>$8.10</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.70</td>
+                <td>$432.69</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>42</td>
+                <td>-26MAR071445-45</td>
+                <td>YES</td>
+                <td>87c</td>
+                <td>9</td>
+                <td>$7.83</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.08</td>
+                <td>$433.77</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>43</td>
+                <td>-26MAR071515-15</td>
+                <td>YES</td>
+                <td>92c</td>
+                <td>9</td>
+                <td>$8.28</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.63</td>
+                <td>$434.40</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>44</td>
+                <td>-26MAR071615-15</td>
+                <td>YES</td>
+                <td>85c</td>
+                <td>10</td>
+                <td>$8.50</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.40</td>
+                <td>$435.80</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>45</td>
+                <td>-26MAR071715-15</td>
+                <td>NO</td>
+                <td>91c</td>
+                <td>9</td>
+                <td>$8.19</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.72</td>
+                <td>$436.52</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>46</td>
+                <td>-26MAR071730-30</td>
+                <td>NO</td>
+                <td>88c</td>
+                <td>9</td>
+                <td>$7.92</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.99</td>
+                <td>$437.51</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>47</td>
+                <td>-26MAR071745-45</td>
+                <td>NO</td>
+                <td>89c</td>
+                <td>9</td>
+                <td>$8.01</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.90</td>
+                <td>$438.41</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>48</td>
+                <td>-26MAR071845-45</td>
+                <td>NO</td>
+                <td>86c</td>
+                <td>10</td>
+                <td>$8.60</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.30</td>
+                <td>$439.71</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>49</td>
+                <td>-26MAR071930-30</td>
+                <td>NO</td>
+                <td>92c</td>
+                <td>9</td>
+                <td>$8.28</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.63</td>
+                <td>$440.34</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>50</td>
+                <td>-26MAR072000-00</td>
+                <td>NO</td>
+                <td>92c</td>
+                <td>9</td>
+                <td>$8.28</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.63</td>
+                <td>$440.97</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>51</td>
+                <td>-26MAR072015-15</td>
+                <td>YES</td>
+                <td>91c</td>
+                <td>9</td>
+                <td>$8.19</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.72</td>
+                <td>$441.69</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>52</td>
+                <td>-26MAR072100-00</td>
+                <td>YES</td>
+                <td>92c</td>
+                <td>9</td>
+                <td>$8.28</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.63</td>
+                <td>$442.32</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>53</td>
+                <td>-26MAR072230-30</td>
+                <td>YES</td>
+                <td>86c</td>
+                <td>10</td>
+                <td>$8.60</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.30</td>
+                <td>$443.62</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>54</td>
+                <td>-26MAR072330-30</td>
+                <td>YES</td>
+                <td>93c</td>
+                <td>9</td>
+                <td>$8.37</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.54</td>
+                <td>$444.16</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>55</td>
+                <td>-26MAR072345-45</td>
+                <td>NO</td>
+                <td>82c</td>
+                <td>10</td>
+                <td>$8.20</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.60</td>
+                <td>$445.76</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>56</td>
+                <td>-26MAR080115-15</td>
+                <td>YES</td>
+                <td>87c</td>
+                <td>10</td>
+                <td>$8.70</td>
+                <td><span class="badge loss">LOSS</span></td>
+                <td class="loss">$-8.80</td>
+                <td>$436.96</td>
+                <td><span class="badge loss">#1</span></td>
+            </tr>
+
+            <tr class="recovery">
+                <td>57</td>
+                <td>-26MAR080700-00</td>
+                <td>NO</td>
+                <td>81c</td>
+                <td>52</td>
+                <td>$42.12</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+8.84</td>
+                <td>$445.80</td>
+                <td><span class="badge recovery">#2</span></td>
+            </tr>
+
+            <tr class="">
+                <td>58</td>
+                <td>-26MAR080845-45</td>
+                <td>NO</td>
+                <td>83c</td>
+                <td>10</td>
+                <td>$8.30</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.60</td>
+                <td>$447.40</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>59</td>
+                <td>-26MAR080900-00</td>
+                <td>NO</td>
+                <td>84c</td>
+                <td>10</td>
+                <td>$8.40</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.50</td>
+                <td>$448.90</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>60</td>
+                <td>-26MAR080945-45</td>
+                <td>NO</td>
+                <td>87c</td>
+                <td>10</td>
+                <td>$8.70</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.20</td>
+                <td>$450.10</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>61</td>
+                <td>-26MAR081000-00</td>
+                <td>YES</td>
+                <td>90c</td>
+                <td>10</td>
+                <td>$9.00</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.90</td>
+                <td>$451.00</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>62</td>
+                <td>-26MAR081130-30</td>
+                <td>NO</td>
+                <td>89c</td>
+                <td>10</td>
+                <td>$8.90</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.00</td>
+                <td>$452.00</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>63</td>
+                <td>-26MAR081445-45</td>
+                <td>NO</td>
+                <td>87c</td>
+                <td>10</td>
+                <td>$8.70</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.20</td>
+                <td>$453.20</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>64</td>
+                <td>-26MAR081545-45</td>
+                <td>YES</td>
+                <td>93c</td>
+                <td>9</td>
+                <td>$8.37</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.54</td>
+                <td>$453.74</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>65</td>
+                <td>-26MAR081630-30</td>
+                <td>NO</td>
+                <td>81c</td>
+                <td>11</td>
+                <td>$8.91</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.87</td>
+                <td>$455.61</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>66</td>
+                <td>-26MAR082000-00</td>
+                <td>NO</td>
+                <td>90c</td>
+                <td>10</td>
+                <td>$9.00</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.90</td>
+                <td>$456.51</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>67</td>
+                <td>-26MAR082100-00</td>
+                <td>NO</td>
+                <td>85c</td>
+                <td>10</td>
+                <td>$8.50</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.40</td>
+                <td>$457.91</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>68</td>
+                <td>-26MAR082130-30</td>
+                <td>YES</td>
+                <td>92c</td>
+                <td>9</td>
+                <td>$8.28</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+0.63</td>
+                <td>$458.54</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>69</td>
+                <td>-26MAR082145-45</td>
+                <td>YES</td>
+                <td>84c</td>
+                <td>10</td>
+                <td>$8.40</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.50</td>
+                <td>$460.04</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+            <tr class="">
+                <td>70</td>
+                <td>-26MAR082300-00</td>
+                <td>YES</td>
+                <td>81c</td>
+                <td>11</td>
+                <td>$8.91</td>
+                <td><span class="badge win">WIN</span></td>
+                <td class="win">$+1.87</td>
+                <td>$461.91</td>
+                <td><span class="badge win">#1</span></td>
+            </tr>
+
+        </table>
+        </div>
+
+        <h2>Catastrophic Loss Sequences</h2>
+<div class="insight">No catastrophic 3+ loss sequences found in this run.</div>
+        <h2>Key Insights</h2>
+        <div class="insight">
+            <strong>Why Results Vary by Bankroll:</strong><br>
+            • Smaller bankrolls can't afford proper recovery bets<br>
+            • Larger bankrolls bet proportionally more, so losses are bigger in absolute terms<br>
+            • The martingale multiplier compounds losses exponentially
+        </div>
+
+        <div class="insight">
+            <strong>The Math of Martingale:</strong><br>
+            • After 1 loss at 85c: Need ~6x contracts to recover<br>
+            • After 2 losses at 85c: Need ~40x contracts to recover<br>
+            • A single 3-loss sequence can wipe out 50+ wins
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATTACK/RECOVER Hybrid Strategy - Backtest Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+        }
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .stat-card.profit {
+            border-color: #00ff88;
+            box-shadow: 0 0 30px rgba(0,255,136,0.2);
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-value.green { color: #00ff88; }
+        .stat-value.blue { color: #00d4ff; }
+        .stat-value.yellow { color: #ffd93d; }
+        .stat-value.red { color: #ff6b6b; }
+        .stat-label {
+            color: #888;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .section {
+            background: rgba(255,255,255,0.03);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .section h2 {
+            color: #00d4ff;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid rgba(0,212,255,0.3);
+            padding-bottom: 10px;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        .mode-card {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 25px;
+        }
+        .mode-card.attack {
+            border-left: 4px solid #ff6b6b;
+        }
+        .mode-card.recover {
+            border-left: 4px solid #00ff88;
+        }
+        .mode-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+        }
+        .mode-card.attack h3 { color: #ff6b6b; }
+        .mode-card.recover h3 { color: #00ff88; }
+        .mode-card ul {
+            list-style: none;
+            padding: 0;
+        }
+        .mode-card li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+        }
+        .mode-card li:before {
+            content: "→";
+            margin-right: 10px;
+            color: #00d4ff;
+        }
+        .formula {
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.95rem;
+            margin: 15px 0;
+            border: 1px solid rgba(0,212,255,0.3);
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .comparison-table th, .comparison-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .comparison-table th {
+            background: rgba(0,212,255,0.1);
+            color: #00d4ff;
+        }
+        .comparison-table tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+        .win { color: #00ff88; }
+        .loss { color: #ff6b6b; }
+        .highlight {
+            background: linear-gradient(90deg, rgba(0,255,136,0.2), transparent);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #00ff88;
+        }
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        .flow-box {
+            background: rgba(0,0,0,0.4);
+            padding: 20px 30px;
+            border-radius: 10px;
+            text-align: center;
+            min-width: 150px;
+        }
+        .flow-box.attack { border: 2px solid #ff6b6b; }
+        .flow-box.recover { border: 2px solid #00ff88; }
+        .flow-box.win { border: 2px solid #00d4ff; }
+        .flow-arrow {
+            font-size: 2rem;
+            color: #888;
+        }
+        .persistence-table {
+            width: 100%;
+            margin: 20px 0;
+        }
+        .persistence-table td {
+            padding: 8px 15px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .trades-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .trades-table th, .trades-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .trades-table th {
+            background: rgba(0,0,0,0.3);
+            position: sticky;
+            top: 0;
+        }
+        .trades-table .attack { background: rgba(255,107,107,0.1); }
+        .trades-table .recover { background: rgba(0,255,136,0.1); }
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .badge.attack { background: #ff6b6b; color: #000; }
+        .badge.recover { background: #00ff88; color: #000; }
+        .badge.win { background: #00ff88; color: #000; }
+        .badge.loss { background: #ff6b6b; color: #fff; }
+        .scroll-table {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        footer {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚔️ ATTACK/RECOVER Hybrid Strategy</h1>
+        <p class="subtitle">Backtest Results: 2026-02-28 to 2026-03-10 (11 days)</p>
+
+        <!-- Hero Stats -->
+        <div class="hero-stats">
+            <div class="stat-card profit">
+                <div class="stat-value green">$9,439.62</div>
+                <div class="stat-label">Total Profit</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value green">944.0%</div>
+                <div class="stat-label">Return on Investment</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value blue">69.2%</div>
+                <div class="stat-label">Win Rate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value red">68.4%</div>
+                <div class="stat-label">Max Drawdown</div>
+            </div>
+        </div>
+
+        <!-- More Stats -->
+        <div class="hero-stats">
+            <div class="stat-card">
+                <div class="stat-value blue">591</div>
+                <div class="stat-label">Total Trades</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value yellow">85.8%</div>
+                <div class="stat-label">Daily ROI</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value green">$10,439.62</div>
+                <div class="stat-label">Final Bankroll</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value blue">$1,000</div>
+                <div class="stat-label">Starting Bankroll</div>
+            </div>
+        </div>
+
+        <!-- Equity Curve -->
+        <div class="section">
+            <h2>📈 Equity Curve</h2>
+            <div class="chart-container">
+                <canvas id="equityChart"></canvas>
+            </div>
+        </div>
+
+        <!-- How It Works -->
+        <div class="section">
+            <h2>🎯 How The Strategy Works</h2>
+
+            <div class="flow-diagram">
+                <div class="flow-box attack">
+                    <strong>ATTACK MODE</strong><br>
+                    <small>S2 System</small>
+                </div>
+                <div class="flow-arrow">→ Loss →</div>
+                <div class="flow-box recover">
+                    <strong>RECOVER MODE</strong><br>
+                    <small>S3 System</small>
+                </div>
+                <div class="flow-arrow">→ Win →</div>
+                <div class="flow-box attack">
+                    <strong>ATTACK MODE</strong><br>
+                    <small>Back to profit</small>
+                </div>
+            </div>
+
+            <div class="strategy-grid">
+                <div class="mode-card attack">
+                    <h3>⚔️ ATTACK MODE (S2 System)</h3>
+                    <p style="color:#888; margin-bottom:15px;">Aggressive profit-making using edge-based entries</p>
+                    <ul>
+                        <li><strong>Wait 5 minutes</strong> into 15-min window</li>
+                        <li><strong>Check BTC position</strong> - above or below strike?</li>
+                        <li><strong>Calculate edge</strong> from 5-year persistence data</li>
+                        <li><strong>Enter if edge ≥ 10%</strong></li>
+                        <li><strong>Dynamic bet sizing</strong> based on edge strength</li>
+                    </ul>
+
+                    <div class="formula">
+                        <strong>Edge Calculation:</strong><br>
+                        edge = historical_persistence - kalshi_price<br><br>
+                        <strong>Example at minute 5:</strong><br>
+                        History says BTC stays in direction 71.3% of time<br>
+                        Kalshi prices it at 55c (55% implied)<br>
+                        Edge = 71.3% - 55% = <span class="win">16.3% edge</span>
+                    </div>
+
+                    <div class="formula">
+                        <strong>Dynamic Bet Sizing:</strong><br>
+                        scale = (edge - 10%) / 20%  <span style="color:#888;"># 0 to 1</span><br>
+                        bet_pct = 2% + scale × 6%  <span style="color:#888;"># 2% to 8% of bankroll</span><br><br>
+                        <strong>Examples:</strong><br>
+                        • 10% edge → 2% of bankroll<br>
+                        • 20% edge → 5% of bankroll<br>
+                        • 30%+ edge → 8% of bankroll
+                    </div>
+                </div>
+
+                <div class="mode-card recover">
+                    <h3>🛡️ RECOVER MODE (S3 System)</h3>
+                    <p style="color:#888; margin-bottom:15px;">Conservative recovery using high win-rate entries</p>
+                    <ul>
+                        <li><strong>Wait 10 minutes</strong> into 15-min window</li>
+                        <li><strong>Only enter at 80-92c</strong> (sweet spot)</li>
+                        <li><strong>90%+ win rate</strong> at these prices</li>
+                        <li><strong>Martingale sizing</strong> to recover losses</li>
+                        <li><strong>Max 2 recovery attempts</strong> then reset</li>
+                    </ul>
+
+                    <div class="formula">
+                        <strong>Recovery Bet Calculation:</strong><br>
+                        recovery_target = total_loss × 1.10  <span style="color:#888;"># +10% buffer</span><br>
+                        net_profit_per_contract = (100¢ - entry) - fee<br>
+                        contracts = recovery_target / net_profit_per_contract<br><br>
+                        <strong>Example:</strong><br>
+                        Lost $50 → Need to recover $55 (with buffer)<br>
+                        Entry at 85c → Net profit = 15c - 1c fee = 14c<br>
+                        Contracts needed = $55 / $0.14 = <span class="win">393 contracts</span>
+                    </div>
+
+                    <div class="formula">
+                        <strong>Why 80-92c?</strong><br>
+                        • At 10 min mark, persistence is 84%+<br>
+                        • Kalshi prices at 80-92c = slight edge<br>
+                        • Combined = <span class="win">90%+ actual win rate</span><br>
+                        • Safe for recovery!
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Persistence Data -->
+        <div class="section">
+            <h2>📊 5-Year BTC Persistence Data</h2>
+            <p style="color:#888; margin-bottom:20px;">This is the historical data that powers the edge calculation. Based on 137,206 fifteen-minute windows from 2019-2024.</p>
+
+            <table class="persistence-table">
+                <tr style="background:rgba(0,212,255,0.1);">
+                    <td><strong>Minute</strong></td>
+                    <td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td><td>11</td><td>12</td><td>13</td>
+                </tr>
+                <tr>
+                    <td><strong>Mins Left</strong></td>
+                    <td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td>
+                </tr>
+                <tr style="background:rgba(0,255,136,0.1);">
+                    <td><strong>Persistence</strong></td>
+                    <td>58.7%</td><td>62.6%</td><td>65.7%</td><td>68.1%</td><td class="win"><strong>71.3%</strong></td><td>74.1%</td><td>76.7%</td><td>79.2%</td><td>81.4%</td><td class="win"><strong>84.1%</strong></td><td>87.0%</td><td>89.9%</td><td>93.2%</td>
+                </tr>
+            </table>
+
+            <div class="highlight">
+                <strong>Key Insight:</strong> By minute 5, if BTC is above the strike, it stays above 71.3% of the time. By minute 10, it's 84.1%. This "momentum" or "persistence" is the edge we exploit.
+            </div>
+        </div>
+
+        <!-- Mode Breakdown -->
+        <div class="section">
+            <h2>📊 Performance by Mode</h2>
+
+            <table class="comparison-table">
+                <tr>
+                    <th>Mode</th>
+                    <th>Trades</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>Win Rate</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><span class="badge attack">ATTACK</span></td>
+                    <td>423</td>
+                    <td class="win">257</td>
+                    <td class="loss">166</td>
+                    <td>60.8%</td>
+                    <td>Profit generation</td>
+                </tr>
+                <tr>
+                    <td><span class="badge recover">RECOVER</span></td>
+                    <td>168</td>
+                    <td class="win">152</td>
+                    <td class="loss">16</td>
+                    <td>90.5%</td>
+                    <td>Loss recovery</td>
+                </tr>
+            </table>
+
+            <div class="chart-container" style="height:300px;">
+                <canvas id="modeChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Comparison -->
+        <div class="section">
+            <h2>🏆 Strategy Comparison</h2>
+
+            <table class="comparison-table">
+                <tr>
+                    <th>Strategy</th>
+                    <th>Final Bankroll</th>
+                    <th>Profit</th>
+                    <th>ROI</th>
+                    <th>Max Drawdown</th>
+                </tr>
+                <tr style="background:rgba(0,255,136,0.15);">
+                    <td><strong>⚔️ ATTACK/RECOVER Hybrid</strong></td>
+                    <td class="win"><strong>$10,439.62</strong></td>
+                    <td class="win"><strong>$9,439.62</strong></td>
+                    <td class="win"><strong>944.0%</strong></td>
+                    <td>68.4%</td>
+                </tr>
+                <tr>
+                    <td>Pure S2 (edge-based only)</td>
+                    <td>$6,829</td>
+                    <td>$5,829</td>
+                    <td>582.9%</td>
+                    <td>65.2%</td>
+                </tr>
+                <tr>
+                    <td>Pure S3 (martingale only)</td>
+                    <td>$2,019</td>
+                    <td>$1,019</td>
+                    <td>101.9%</td>
+                    <td>18.3%</td>
+                </tr>
+            </table>
+
+            <div class="highlight">
+                <strong>The hybrid outperforms both pure strategies!</strong> By using S2 for aggressive profit-making and switching to S3's high win-rate for recovery, we get the best of both worlds.
+            </div>
+        </div>
+
+        <!-- Drawdown Chart -->
+        <div class="section">
+            <h2>📉 Drawdown Analysis</h2>
+            <div class="chart-container">
+                <canvas id="drawdownChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Trades -->
+        <div class="section">
+            <h2>📝 Sample Trades (First 100)</h2>
+            <div class="scroll-table">
+                <table class="trades-table">
+                    <tr>
+                        <th>#</th>
+                        <th>Mode</th>
+                        <th>Entry</th>
+                        <th>Contracts</th>
+                        <th>Cost</th>
+                        <th>Edge</th>
+                        <th>Bet %</th>
+                        <th>Result</th>
+                        <th>P/L</th>
+                        <th>Bankroll</th>
+                    </tr>
+                    <tbody id="tradesBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer>
+            <p>Generated 2026-03-10 17:06:01</p>
+            <p>ATTACK/RECOVER Hybrid Strategy Backtest</p>
+        </footer>
+    </div>
+
+    <script>
+        // Data
+        const equityData = [{"trade": 0, "bankroll": 1000, "mode": "START"}, {"trade": 1, "bankroll": 1008.05, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 2, "bankroll": 936.09, "mode": "RECOVER", "drawdown": 7.14}, {"trade": 3, "bankroll": 1015.29, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 4, "bankroll": 975.01, "mode": "RECOVER", "drawdown": 3.97}, {"trade": 5, "bankroll": 1019.41, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 6, "bankroll": 1058.33, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 7, "bankroll": 1033.3, "mode": "RECOVER", "drawdown": 2.36}, {"trade": 8, "bankroll": 914.86, "mode": "RECOVER", "drawdown": 13.56}, {"trade": 9, "bankroll": 1072.81, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 10, "bankroll": 1088.97, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 11, "bankroll": 1039.33, "mode": "RECOVER", "drawdown": 4.56}, {"trade": 12, "bankroll": 1094.08, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 13, "bankroll": 1175.61, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 14, "bankroll": 1185.93, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 15, "bankroll": 1138.85, "mode": "RECOVER", "drawdown": 3.97}, {"trade": 16, "bankroll": 1190.69, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 17, "bankroll": 1208.7, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 18, "bankroll": 1220.28, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 19, "bankroll": 1175.26, "mode": "RECOVER", "drawdown": 3.69}, {"trade": 20, "bankroll": 1224.86, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 21, "bankroll": 1186.08, "mode": "RECOVER", "drawdown": 3.17}, {"trade": 22, "bankroll": 1228.8, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 23, "bankroll": 1239.42, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 24, "bankroll": 1203.99, "mode": "RECOVER", "drawdown": 2.86}, {"trade": 25, "bankroll": 1243.01, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 26, "bankroll": 1313.93, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 27, "bankroll": 1239.61, "mode": "RECOVER", "drawdown": 5.66}, {"trade": 28, "bankroll": 1321.37, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 29, "bankroll": 1411.59, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 30, "bankroll": 1432.83, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 31, "bankroll": 1367.6, "mode": "RECOVER", "drawdown": 4.55}, {"trade": 32, "bankroll": 1439.37, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 33, "bankroll": 1390.63, "mode": "RECOVER", "drawdown": 3.39}, {"trade": 34, "bankroll": 773.31, "mode": "RECOVER", "drawdown": 46.27}, {"trade": 35, "bankroll": 780.76, "mode": "ATTACK", "drawdown": 45.76}, {"trade": 36, "bankroll": 737.77, "mode": "RECOVER", "drawdown": 48.74}, {"trade": 37, "bankroll": 785.09, "mode": "ATTACK", "drawdown": 45.46}, {"trade": 38, "bankroll": 795.11, "mode": "ATTACK", "drawdown": 44.76}, {"trade": 39, "bankroll": 836.13, "mode": "ATTACK", "drawdown": 41.91}, {"trade": 40, "bankroll": 883.9, "mode": "ATTACK", "drawdown": 38.59}, {"trade": 41, "bankroll": 865.53, "mode": "RECOVER", "drawdown": 39.87}, {"trade": 42, "bankroll": 885.83, "mode": "ATTACK", "drawdown": 38.46}, {"trade": 43, "bankroll": 858.96, "mode": "RECOVER", "drawdown": 40.32}, {"trade": 44, "bankroll": 888.6, "mode": "ATTACK", "drawdown": 38.26}, {"trade": 45, "bankroll": 902.01, "mode": "ATTACK", "drawdown": 37.33}, {"trade": 46, "bankroll": 857.4, "mode": "RECOVER", "drawdown": 40.43}, {"trade": 47, "bankroll": 906.54, "mode": "ATTACK", "drawdown": 37.02}, {"trade": 48, "bankroll": 922.6, "mode": "ATTACK", "drawdown": 35.9}, {"trade": 49, "bankroll": 975.3, "mode": "ATTACK", "drawdown": 32.24}, {"trade": 50, "bankroll": 948.59, "mode": "RECOVER", "drawdown": 34.1}, {"trade": 51, "bankroll": 978.07, "mode": "ATTACK", "drawdown": 32.05}, {"trade": 52, "bankroll": 998.22, "mode": "ATTACK", "drawdown": 30.65}, {"trade": 53, "bankroll": 1021.75, "mode": "ATTACK", "drawdown": 29.01}, {"trade": 54, "bankroll": 1049.23, "mode": "ATTACK", "drawdown": 27.1}, {"trade": 55, "bankroll": 971.19, "mode": "RECOVER", "drawdown": 32.53}, {"trade": 56, "bankroll": 1057.05, "mode": "ATTACK", "drawdown": 26.56}, {"trade": 57, "bankroll": 1015.06, "mode": "RECOVER", "drawdown": 29.48}, {"trade": 58, "bankroll": 1061.32, "mode": "ATTACK", "drawdown": 26.26}, {"trade": 59, "bankroll": 1080.19, "mode": "ATTACK", "drawdown": 24.95}, {"trade": 60, "bankroll": 1096.67, "mode": "ATTACK", "drawdown": 23.81}, {"trade": 61, "bankroll": 1006.01, "mode": "RECOVER", "drawdown": 30.11}, {"trade": 62, "bankroll": 1105.88, "mode": "ATTACK", "drawdown": 23.17}, {"trade": 63, "bankroll": 1147.97, "mode": "ATTACK", "drawdown": 20.24}, {"trade": 64, "bankroll": 1176.97, "mode": "ATTACK", "drawdown": 18.23}, {"trade": 65, "bankroll": 1197.81, "mode": "ATTACK", "drawdown": 16.78}, {"trade": 66, "bankroll": 1153.94, "mode": "RECOVER", "drawdown": 19.83}, {"trade": 67, "bankroll": 1202.26, "mode": "ATTACK", "drawdown": 16.47}, {"trade": 68, "bankroll": 1128.95, "mode": "RECOVER", "drawdown": 21.57}, {"trade": 69, "bankroll": 1209.65, "mode": "ATTACK", "drawdown": 15.96}, {"trade": 70, "bankroll": 1225.01, "mode": "ATTACK", "drawdown": 14.89}, {"trade": 71, "bankroll": 1243.88, "mode": "ATTACK", "drawdown": 13.58}, {"trade": 72, "bankroll": 1269.67, "mode": "ATTACK", "drawdown": 11.79}, {"trade": 73, "bankroll": 1166.97, "mode": "RECOVER", "drawdown": 18.93}, {"trade": 74, "bankroll": 1280.07, "mode": "ATTACK", "drawdown": 11.07}, {"trade": 75, "bankroll": 1214.95, "mode": "RECOVER", "drawdown": 15.59}, {"trade": 76, "bankroll": 1286.65, "mode": "ATTACK", "drawdown": 10.61}, {"trade": 77, "bankroll": 1301.25, "mode": "ATTACK", "drawdown": 9.6}, {"trade": 78, "bankroll": 1249.06, "mode": "RECOVER", "drawdown": 13.22}, {"trade": 79, "bankroll": 1306.52, "mode": "ATTACK", "drawdown": 9.23}, {"trade": 80, "bankroll": 1270.71, "mode": "RECOVER", "drawdown": 11.72}, {"trade": 81, "bankroll": 1310.14, "mode": "ATTACK", "drawdown": 8.98}, {"trade": 82, "bankroll": 1344.79, "mode": "ATTACK", "drawdown": 6.57}, {"trade": 83, "bankroll": 1361.97, "mode": "ATTACK", "drawdown": 5.38}, {"trade": 84, "bankroll": 1393.8, "mode": "ATTACK", "drawdown": 3.17}, {"trade": 85, "bankroll": 1359.88, "mode": "RECOVER", "drawdown": 5.52}, {"trade": 86, "bankroll": 1397.23, "mode": "ATTACK", "drawdown": 2.93}, {"trade": 87, "bankroll": 1301.75, "mode": "RECOVER", "drawdown": 9.56}, {"trade": 88, "bankroll": 1406.79, "mode": "ATTACK", "drawdown": 2.26}, {"trade": 89, "bankroll": 1427.22, "mode": "ATTACK", "drawdown": 0.84}, {"trade": 90, "bankroll": 1438.8, "mode": "ATTACK", "drawdown": 0.04}, {"trade": 91, "bankroll": 1457.09, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 92, "bankroll": 1479.32, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 93, "bankroll": 1535.89, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 94, "bankroll": 1559.26, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 95, "bankroll": 1612.38, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 96, "bankroll": 1537.93, "mode": "RECOVER", "drawdown": 4.62}, {"trade": 97, "bankroll": 1619.83, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 98, "bankroll": 1550.15, "mode": "RECOVER", "drawdown": 4.3}, {"trade": 99, "bankroll": 1626.85, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 100, "bankroll": 1640.12, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 101, "bankroll": 1660.56, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 102, "bankroll": 1604.78, "mode": "RECOVER", "drawdown": 3.36}, {"trade": 103, "bankroll": 1666.14, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 104, "bankroll": 1693.87, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 105, "bankroll": 1578.34, "mode": "RECOVER", "drawdown": 6.82}, {"trade": 106, "bankroll": 1705.54, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 107, "bankroll": 1621.16, "mode": "RECOVER", "drawdown": 4.95}, {"trade": 108, "bankroll": 1714.12, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 109, "bankroll": 1677.77, "mode": "RECOVER", "drawdown": 2.12}, {"trade": 110, "bankroll": 1717.82, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 111, "bankroll": 1632.9, "mode": "RECOVER", "drawdown": 4.94}, {"trade": 112, "bankroll": 1726.35, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 113, "bankroll": 1757.01, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 114, "bankroll": 1720.92, "mode": "RECOVER", "drawdown": 2.05}, {"trade": 115, "bankroll": 1760.68, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 116, "bankroll": 1679.12, "mode": "RECOVER", "drawdown": 4.63}, {"trade": 117, "bankroll": 1768.88, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 118, "bankroll": 1780.94, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 119, "bankroll": 1738.93, "mode": "RECOVER", "drawdown": 2.36}, {"trade": 120, "bankroll": 1785.25, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 121, "bankroll": 1802.26, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 122, "bankroll": 1700.14, "mode": "RECOVER", "drawdown": 5.67}, {"trade": 123, "bankroll": 1812.52, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 124, "bankroll": 1832.12, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 125, "bankroll": 1793.26, "mode": "RECOVER", "drawdown": 2.12}, {"trade": 126, "bankroll": 1836.12, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 127, "bankroll": 1718.93, "mode": "RECOVER", "drawdown": 6.38}, {"trade": 128, "bankroll": 1847.88, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 129, "bankroll": 1871.4, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 130, "bankroll": 1807.98, "mode": "RECOVER", "drawdown": 3.39}, {"trade": 131, "bankroll": 1877.74, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 132, "bankroll": 1808.47, "mode": "RECOVER", "drawdown": 3.69}, {"trade": 133, "bankroll": 1884.79, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 134, "bankroll": 1791.81, "mode": "RECOVER", "drawdown": 4.93}, {"trade": 135, "bankroll": 1894.15, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 136, "bankroll": 1809.55, "mode": "RECOVER", "drawdown": 4.47}, {"trade": 137, "bankroll": 1902.7, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 138, "bankroll": 1820.77, "mode": "RECOVER", "drawdown": 4.31}, {"trade": 139, "bankroll": 1910.93, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 140, "bankroll": 1950.42, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 141, "bankroll": 1860.09, "mode": "RECOVER", "drawdown": 4.63}, {"trade": 142, "bankroll": 1959.45, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 143, "bankroll": 2019.16, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 144, "bankroll": 2073.69, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 145, "bankroll": 2136.86, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 146, "bankroll": 2157.6, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 147, "bankroll": 2106.16, "mode": "RECOVER", "drawdown": 2.38}, {"trade": 148, "bankroll": 2162.8, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 149, "bankroll": 2076.56, "mode": "RECOVER", "drawdown": 3.99}, {"trade": 150, "bankroll": 2171.44, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 151, "bankroll": 2071.26, "mode": "RECOVER", "drawdown": 4.61}, {"trade": 152, "bankroll": 2181.52, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 153, "bankroll": 2101.28, "mode": "RECOVER", "drawdown": 3.68}, {"trade": 154, "bankroll": 2189.6, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 155, "bankroll": 2074.61, "mode": "RECOVER", "drawdown": 5.25}, {"trade": 156, "bankroll": 2201.17, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 157, "bankroll": 2119.78, "mode": "RECOVER", "drawdown": 3.7}, {"trade": 158, "bankroll": 2209.38, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 159, "bankroll": 2243.18, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 160, "bankroll": 2271.56, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 161, "bankroll": 2312.04, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 162, "bankroll": 2484.78, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 163, "bankroll": 2397.78, "mode": "RECOVER", "drawdown": 3.5}, {"trade": 164, "bankroll": 2493.54, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 165, "bankroll": 2552.58, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 166, "bankroll": 2450.46, "mode": "RECOVER", "drawdown": 4.0}, {"trade": 167, "bankroll": 2562.88, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 168, "bankroll": 2723.19, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 169, "bankroll": 2758.27, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 170, "bankroll": 2844.51, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 171, "bankroll": 2917.32, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 172, "bankroll": 2948.95, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 173, "bankroll": 3101.91, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 174, "bankroll": 2970.38, "mode": "RECOVER", "drawdown": 4.24}, {"trade": 175, "bankroll": 3115.1, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 176, "bankroll": 3154.68, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 177, "bankroll": 3210.89, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 178, "bankroll": 3022.1, "mode": "RECOVER", "drawdown": 5.88}, {"trade": 179, "bankroll": 3229.82, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 180, "bankroll": 3296.71, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 181, "bankroll": 3397.52, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 182, "bankroll": 3511.9, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 183, "bankroll": 3594.45, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 184, "bankroll": 3640.37, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 185, "bankroll": 3695.93, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 186, "bankroll": 3619.17, "mode": "RECOVER", "drawdown": 2.08}, {"trade": 187, "bankroll": 3703.75, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 188, "bankroll": 3774.59, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 189, "bankroll": 4119.76, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 190, "bankroll": 3877.18, "mode": "RECOVER", "drawdown": 5.89}, {"trade": 191, "bankroll": 4144.03, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 192, "bankroll": 4269.72, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 193, "bankroll": 4075.19, "mode": "RECOVER", "drawdown": 4.56}, {"trade": 194, "bankroll": 4289.18, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 195, "bankroll": 3964.89, "mode": "RECOVER", "drawdown": 7.56}, {"trade": 196, "bankroll": 4321.61, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 197, "bankroll": 4230.67, "mode": "RECOVER", "drawdown": 2.1}, {"trade": 198, "bankroll": 4330.77, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 199, "bankroll": 4396.68, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 200, "bankroll": 4463.74, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 201, "bankroll": 4603.38, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 202, "bankroll": 4490.5, "mode": "RECOVER", "drawdown": 2.45}, {"trade": 203, "bankroll": 4614.7, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 204, "bankroll": 4710.2, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 205, "bankroll": 4742.46, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 206, "bankroll": 4804.36, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 207, "bankroll": 4890.44, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 208, "bankroll": 4952.79, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 209, "bankroll": 5006.78, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 210, "bankroll": 5125.68, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 211, "bankroll": 5301.39, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 212, "bankroll": 5803.17, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 213, "bankroll": 5552.35, "mode": "RECOVER", "drawdown": 4.32}, {"trade": 214, "bankroll": 5828.35, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 215, "bankroll": 5986.03, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 216, "bankroll": 6110.14, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 217, "bankroll": 6176.51, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 218, "bankroll": 6257.15, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 219, "bankroll": 6369.17, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 220, "bankroll": 6631.64, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 221, "bankroll": 10141.3, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 222, "bankroll": 10299.19, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 223, "bankroll": 9757.46, "mode": "RECOVER", "drawdown": 5.26}, {"trade": 224, "bankroll": 10353.46, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 225, "bankroll": 10039.93, "mode": "RECOVER", "drawdown": 3.03}, {"trade": 226, "bankroll": 10384.89, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 227, "bankroll": 10570.81, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 228, "bankroll": 9848.04, "mode": "RECOVER", "drawdown": 6.84}, {"trade": 229, "bankroll": 10643.09, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 230, "bankroll": 10282.58, "mode": "RECOVER", "drawdown": 3.39}, {"trade": 231, "bankroll": 10679.26, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 232, "bankroll": 10933.58, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 233, "bankroll": 11229.5, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 234, "bankroll": 10673.76, "mode": "RECOVER", "drawdown": 4.95}, {"trade": 235, "bankroll": 11285.16, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 236, "bankroll": 11043.27, "mode": "RECOVER", "drawdown": 2.14}, {"trade": 237, "bankroll": 11309.41, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 238, "bankroll": 11481.85, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 239, "bankroll": 11755.15, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 240, "bankroll": 11906.49, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 241, "bankroll": 11614.12, "mode": "RECOVER", "drawdown": 2.46}, {"trade": 242, "bankroll": 11935.72, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 243, "bankroll": 11687.71, "mode": "RECOVER", "drawdown": 2.08}, {"trade": 244, "bankroll": 11960.57, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 245, "bankroll": 11629.79, "mode": "RECOVER", "drawdown": 2.77}, {"trade": 246, "bankroll": 11993.69, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 247, "bankroll": 12360.6, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 248, "bankroll": 12018.89, "mode": "RECOVER", "drawdown": 2.76}, {"trade": 249, "bankroll": 12394.79, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 250, "bankroll": 12051.88, "mode": "RECOVER", "drawdown": 2.77}, {"trade": 251, "bankroll": 12429.16, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 252, "bankroll": 12855.83, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 253, "bankroll": 13021.53, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 254, "bankroll": 12750.55, "mode": "RECOVER", "drawdown": 2.08}, {"trade": 255, "bankroll": 13048.63, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 256, "bankroll": 13276.41, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 257, "bankroll": 13445.91, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 258, "bankroll": 14452.46, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 259, "bankroll": 14594.82, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 260, "bankroll": 14856.54, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 261, "bankroll": 14214.19, "mode": "RECOVER", "drawdown": 4.32}, {"trade": 262, "bankroll": 9484.87, "mode": "RECOVER", "drawdown": 36.16}, {"trade": 263, "bankroll": 9603.13, "mode": "ATTACK", "drawdown": 35.36}, {"trade": 264, "bankroll": 9187.87, "mode": "RECOVER", "drawdown": 38.16}, {"trade": 265, "bankroll": 9644.77, "mode": "ATTACK", "drawdown": 35.08}, {"trade": 266, "bankroll": 9749.65, "mode": "ATTACK", "drawdown": 34.37}, {"trade": 267, "bankroll": 9114.03, "mode": "RECOVER", "drawdown": 38.65}, {"trade": 268, "bankroll": 6109.35, "mode": "RECOVER", "drawdown": 58.88}, {"trade": 269, "bankroll": 5826.32, "mode": "RECOVER", "drawdown": 60.78}, {"trade": 270, "bankroll": 6137.67, "mode": "ATTACK", "drawdown": 58.69}, {"trade": 271, "bankroll": 5814.85, "mode": "RECOVER", "drawdown": 60.86}, {"trade": 272, "bankroll": 6170.05, "mode": "ATTACK", "drawdown": 58.47}, {"trade": 273, "bankroll": 7297.37, "mode": "ATTACK", "drawdown": 50.88}, {"trade": 274, "bankroll": 7140.7, "mode": "RECOVER", "drawdown": 51.94}, {"trade": 275, "bankroll": 7313.05, "mode": "ATTACK", "drawdown": 50.78}, {"trade": 276, "bankroll": 6974.19, "mode": "RECOVER", "drawdown": 53.06}, {"trade": 277, "bankroll": 7347.01, "mode": "ATTACK", "drawdown": 50.55}, {"trade": 278, "bankroll": 7411.62, "mode": "ATTACK", "drawdown": 50.11}, {"trade": 279, "bankroll": 7524.66, "mode": "ATTACK", "drawdown": 49.35}, {"trade": 280, "bankroll": 7586.4, "mode": "ATTACK", "drawdown": 48.94}, {"trade": 281, "bankroll": 7846.65, "mode": "ATTACK", "drawdown": 47.18}, {"trade": 282, "bankroll": 7910.7, "mode": "ATTACK", "drawdown": 46.75}, {"trade": 283, "bankroll": 8052.21, "mode": "ATTACK", "drawdown": 45.8}, {"trade": 284, "bankroll": 8139.89, "mode": "ATTACK", "drawdown": 45.21}, {"trade": 285, "bankroll": 7889.73, "mode": "RECOVER", "drawdown": 46.89}, {"trade": 286, "bankroll": 8164.97, "mode": "ATTACK", "drawdown": 45.04}, {"trade": 287, "bankroll": 8285.13, "mode": "ATTACK", "drawdown": 44.23}, {"trade": 288, "bankroll": 8375.22, "mode": "ATTACK", "drawdown": 43.63}, {"trade": 289, "bankroll": 8039.36, "mode": "RECOVER", "drawdown": 45.89}, {"trade": 290, "bankroll": 8408.93, "mode": "ATTACK", "drawdown": 43.4}, {"trade": 291, "bankroll": 8559.47, "mode": "ATTACK", "drawdown": 42.39}, {"trade": 292, "bankroll": 8260.32, "mode": "RECOVER", "drawdown": 44.4}, {"trade": 293, "bankroll": 8589.48, "mode": "ATTACK", "drawdown": 42.18}, {"trade": 294, "bankroll": 8817.95, "mode": "ATTACK", "drawdown": 40.65}, {"trade": 295, "bankroll": 8409.02, "mode": "RECOVER", "drawdown": 43.4}, {"trade": 296, "bankroll": 4768.92, "mode": "RECOVER", "drawdown": 67.9}, {"trade": 297, "bankroll": 4840.79, "mode": "ATTACK", "drawdown": 67.42}, {"trade": 298, "bankroll": 4695.4, "mode": "RECOVER", "drawdown": 68.4}, {"trade": 299, "bankroll": 4855.33, "mode": "ATTACK", "drawdown": 67.32}, {"trade": 300, "bankroll": 5251.11, "mode": "ATTACK", "drawdown": 64.65}, {"trade": 301, "bankroll": 5319.73, "mode": "ATTACK", "drawdown": 64.19}, {"trade": 302, "bankroll": 5463.89, "mode": "ATTACK", "drawdown": 63.22}, {"trade": 303, "bankroll": 5316.86, "mode": "RECOVER", "drawdown": 64.21}, {"trade": 304, "bankroll": 5478.62, "mode": "ATTACK", "drawdown": 63.12}, {"trade": 305, "bankroll": 5649.98, "mode": "ATTACK", "drawdown": 61.97}, {"trade": 306, "bankroll": 5321.59, "mode": "RECOVER", "drawdown": 64.18}, {"trade": 307, "bankroll": 5682.94, "mode": "ATTACK", "drawdown": 61.75}, {"trade": 308, "bankroll": 5755.37, "mode": "ATTACK", "drawdown": 61.26}, {"trade": 309, "bankroll": 5802.49, "mode": "ATTACK", "drawdown": 60.94}, {"trade": 310, "bankroll": 5460.95, "mode": "RECOVER", "drawdown": 63.24}, {"trade": 311, "bankroll": 5836.71, "mode": "ATTACK", "drawdown": 60.71}, {"trade": 312, "bankroll": 5674.56, "mode": "RECOVER", "drawdown": 61.8}, {"trade": 313, "bankroll": 5852.92, "mode": "ATTACK", "drawdown": 60.6}, {"trade": 314, "bankroll": 6053.87, "mode": "ATTACK", "drawdown": 59.25}, {"trade": 315, "bankroll": 5890.93, "mode": "RECOVER", "drawdown": 60.35}, {"trade": 316, "bankroll": 6070.23, "mode": "ATTACK", "drawdown": 59.14}, {"trade": 317, "bankroll": 6161.69, "mode": "ATTACK", "drawdown": 58.53}, {"trade": 318, "bankroll": 6451.81, "mode": "ATTACK", "drawdown": 56.57}, {"trade": 319, "bankroll": 6585.58, "mode": "ATTACK", "drawdown": 55.67}, {"trade": 320, "bankroll": 6383.18, "mode": "RECOVER", "drawdown": 57.03}, {"trade": 321, "bankroll": 6605.9, "mode": "ATTACK", "drawdown": 55.54}, {"trade": 322, "bankroll": 6724.22, "mode": "ATTACK", "drawdown": 54.74}, {"trade": 323, "bankroll": 6980.1, "mode": "ATTACK", "drawdown": 53.02}, {"trade": 324, "bankroll": 7124.76, "mode": "ATTACK", "drawdown": 52.04}, {"trade": 325, "bankroll": 7202.13, "mode": "ATTACK", "drawdown": 51.52}, {"trade": 326, "bankroll": 7003.06, "mode": "RECOVER", "drawdown": 52.86}, {"trade": 327, "bankroll": 7222.06, "mode": "ATTACK", "drawdown": 51.39}, {"trade": 328, "bankroll": 7634.78, "mode": "ATTACK", "drawdown": 48.61}, {"trade": 329, "bankroll": 7471.22, "mode": "RECOVER", "drawdown": 49.71}, {"trade": 330, "bankroll": 7651.14, "mode": "ATTACK", "drawdown": 48.5}, {"trade": 331, "bankroll": 7273.07, "mode": "RECOVER", "drawdown": 51.04}, {"trade": 332, "bankroll": 7689.01, "mode": "ATTACK", "drawdown": 48.24}, {"trade": 333, "bankroll": 7211.93, "mode": "RECOVER", "drawdown": 51.46}, {"trade": 334, "bankroll": 7736.8, "mode": "ATTACK", "drawdown": 47.92}, {"trade": 335, "bankroll": 8139.2, "mode": "ATTACK", "drawdown": 45.21}, {"trade": 336, "bankroll": 7762.02, "mode": "RECOVER", "drawdown": 47.75}, {"trade": 337, "bankroll": 8177.06, "mode": "ATTACK", "drawdown": 44.96}, {"trade": 338, "bankroll": 8301.6, "mode": "ATTACK", "drawdown": 44.12}, {"trade": 339, "bankroll": 8407.63, "mode": "ATTACK", "drawdown": 43.41}, {"trade": 340, "bankroll": 8729.85, "mode": "ATTACK", "drawdown": 41.24}, {"trade": 341, "bankroll": 8370.26, "mode": "RECOVER", "drawdown": 43.66}, {"trade": 342, "bankroll": 8765.96, "mode": "ATTACK", "drawdown": 41.0}, {"trade": 343, "bankroll": 8393.11, "mode": "RECOVER", "drawdown": 43.51}, {"trade": 344, "bankroll": 8803.31, "mode": "ATTACK", "drawdown": 40.74}, {"trade": 345, "bankroll": 8505.04, "mode": "RECOVER", "drawdown": 42.75}, {"trade": 346, "bankroll": 8833.24, "mode": "ATTACK", "drawdown": 40.54}, {"trade": 347, "bankroll": 8926.5, "mode": "ATTACK", "drawdown": 39.92}, {"trade": 348, "bankroll": 9013.18, "mode": "ATTACK", "drawdown": 39.33}, {"trade": 349, "bankroll": 9288.79, "mode": "ATTACK", "drawdown": 37.48}, {"trade": 350, "bankroll": 9654.05, "mode": "ATTACK", "drawdown": 35.02}, {"trade": 351, "bankroll": 9801.2, "mode": "ATTACK", "drawdown": 34.03}, {"trade": 352, "bankroll": 10218.4, "mode": "ATTACK", "drawdown": 31.22}, {"trade": 353, "bankroll": 10401.17, "mode": "ATTACK", "drawdown": 29.99}, {"trade": 354, "bankroll": 9861.62, "mode": "RECOVER", "drawdown": 33.62}, {"trade": 355, "bankroll": 10455.17, "mode": "ATTACK", "drawdown": 29.63}, {"trade": 356, "bankroll": 10704.12, "mode": "ATTACK", "drawdown": 27.95}, {"trade": 357, "bankroll": 10481.69, "mode": "RECOVER", "drawdown": 29.45}, {"trade": 358, "bankroll": 9094.49, "mode": "RECOVER", "drawdown": 38.78}, {"trade": 359, "bankroll": 10865.24, "mode": "ATTACK", "drawdown": 26.87}, {"trade": 360, "bankroll": 10572.46, "mode": "RECOVER", "drawdown": 28.84}, {"trade": 361, "bankroll": 10894.54, "mode": "ATTACK", "drawdown": 26.67}, {"trade": 362, "bankroll": 11130.44, "mode": "ATTACK", "drawdown": 25.08}, {"trade": 363, "bankroll": 10622.47, "mode": "RECOVER", "drawdown": 28.5}, {"trade": 364, "bankroll": 11181.31, "mode": "ATTACK", "drawdown": 24.74}, {"trade": 365, "bankroll": 10740.69, "mode": "RECOVER", "drawdown": 27.7}, {"trade": 366, "bankroll": 11225.46, "mode": "ATTACK", "drawdown": 24.44}, {"trade": 367, "bankroll": 10957.24, "mode": "RECOVER", "drawdown": 26.25}, {"trade": 368, "bankroll": 9605.42, "mode": "RECOVER", "drawdown": 35.35}, {"trade": 369, "bankroll": 9683.82, "mode": "ATTACK", "drawdown": 34.82}, {"trade": 370, "bankroll": 9446.35, "mode": "RECOVER", "drawdown": 36.42}, {"trade": 371, "bankroll": 9707.59, "mode": "ATTACK", "drawdown": 34.66}, {"trade": 372, "bankroll": 10164.98, "mode": "ATTACK", "drawdown": 31.58}, {"trade": 373, "bankroll": 10376.13, "mode": "ATTACK", "drawdown": 30.16}, {"trade": 374, "bankroll": 10549.85, "mode": "ATTACK", "drawdown": 28.99}, {"trade": 375, "bankroll": 10684.62, "mode": "ATTACK", "drawdown": 28.08}, {"trade": 376, "bankroll": 10144.44, "mode": "RECOVER", "drawdown": 31.72}, {"trade": 377, "bankroll": 10738.74, "mode": "ATTACK", "drawdown": 27.72}, {"trade": 378, "bankroll": 10902.37, "mode": "ATTACK", "drawdown": 26.62}, {"trade": 379, "bankroll": 10668.62, "mode": "RECOVER", "drawdown": 28.19}, {"trade": 380, "bankroll": 8782.78, "mode": "RECOVER", "drawdown": 40.88}, {"trade": 381, "bankroll": 8540.01, "mode": "RECOVER", "drawdown": 42.52}, {"trade": 382, "bankroll": 8807.13, "mode": "ATTACK", "drawdown": 40.72}, {"trade": 383, "bankroll": 8591.25, "mode": "RECOVER", "drawdown": 42.17}, {"trade": 384, "bankroll": 8828.79, "mode": "ATTACK", "drawdown": 40.57}, {"trade": 385, "bankroll": 8231.97, "mode": "RECOVER", "drawdown": 44.59}, {"trade": 386, "bankroll": 8888.62, "mode": "ATTACK", "drawdown": 40.17}, {"trade": 387, "bankroll": 8392.86, "mode": "RECOVER", "drawdown": 43.51}, {"trade": 388, "bankroll": 8938.21, "mode": "ATTACK", "drawdown": 39.84}, {"trade": 389, "bankroll": 9098.18, "mode": "ATTACK", "drawdown": 38.76}, {"trade": 390, "bankroll": 8874.9, "mode": "RECOVER", "drawdown": 40.26}, {"trade": 391, "bankroll": 9120.53, "mode": "ATTACK", "drawdown": 38.61}, {"trade": 392, "bankroll": 12905.33, "mode": "ATTACK", "drawdown": 13.13}, {"trade": 393, "bankroll": 12253.0, "mode": "RECOVER", "drawdown": 17.52}, {"trade": 394, "bankroll": 12970.57, "mode": "ATTACK", "drawdown": 12.69}, {"trade": 395, "bankroll": 13136.34, "mode": "ATTACK", "drawdown": 11.58}, {"trade": 396, "bankroll": 12403.56, "mode": "RECOVER", "drawdown": 16.51}, {"trade": 397, "bankroll": 13209.69, "mode": "ATTACK", "drawdown": 11.09}, {"trade": 398, "bankroll": 13613.8, "mode": "ATTACK", "drawdown": 8.36}, {"trade": 399, "bankroll": 12811.97, "mode": "RECOVER", "drawdown": 13.76}, {"trade": 400, "bankroll": 13694.11, "mode": "ATTACK", "drawdown": 7.82}, {"trade": 401, "bankroll": 13806.07, "mode": "ATTACK", "drawdown": 7.07}, {"trade": 402, "bankroll": 14228.36, "mode": "ATTACK", "drawdown": 4.23}, {"trade": 403, "bankroll": 13210.52, "mode": "RECOVER", "drawdown": 11.08}, {"trade": 404, "bankroll": 14330.2, "mode": "ATTACK", "drawdown": 3.54}, {"trade": 405, "bankroll": 14447.69, "mode": "ATTACK", "drawdown": 2.75}, {"trade": 406, "bankroll": 14791.59, "mode": "ATTACK", "drawdown": 0.44}, {"trade": 407, "bankroll": 15143.75, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 408, "bankroll": 14441.93, "mode": "RECOVER", "drawdown": 4.63}, {"trade": 409, "bankroll": 15213.95, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 410, "bankroll": 15379.02, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 411, "bankroll": 15577.12, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 412, "bankroll": 15097.69, "mode": "RECOVER", "drawdown": 3.08}, {"trade": 413, "bankroll": 15625.16, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 414, "bankroll": 15949.53, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 415, "bankroll": 15588.7, "mode": "RECOVER", "drawdown": 2.26}, {"trade": 416, "bankroll": 15985.66, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 417, "bankroll": 16232.12, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 418, "bankroll": 16618.54, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 419, "bankroll": 16799.76, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 420, "bankroll": 16982.7, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 421, "bankroll": 16441.09, "mode": "RECOVER", "drawdown": 3.19}, {"trade": 422, "bankroll": 17037.02, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 423, "bankroll": 17256.5, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 424, "bankroll": 16671.7, "mode": "RECOVER", "drawdown": 3.39}, {"trade": 425, "bankroll": 17315.0, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 426, "bankroll": 16782.42, "mode": "RECOVER", "drawdown": 3.08}, {"trade": 427, "bankroll": 17368.34, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 428, "bankroll": 17782.01, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 429, "bankroll": 17974.97, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 430, "bankroll": 18207.09, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 431, "bankroll": 17248.63, "mode": "RECOVER", "drawdown": 5.26}, {"trade": 432, "bankroll": 12718.08, "mode": "RECOVER", "drawdown": 30.15}, {"trade": 433, "bankroll": 12982.01, "mode": "ATTACK", "drawdown": 28.7}, {"trade": 434, "bankroll": 12663.13, "mode": "RECOVER", "drawdown": 30.45}, {"trade": 435, "bankroll": 13014.0, "mode": "ATTACK", "drawdown": 28.52}, {"trade": 436, "bankroll": 13266.25, "mode": "ATTACK", "drawdown": 27.14}, {"trade": 437, "bankroll": 14651.1, "mode": "ATTACK", "drawdown": 19.53}, {"trade": 438, "bankroll": 14749.96, "mode": "ATTACK", "drawdown": 18.99}, {"trade": 439, "bankroll": 16623.85, "mode": "ATTACK", "drawdown": 8.7}, {"trade": 440, "bankroll": 16877.53, "mode": "ATTACK", "drawdown": 7.3}, {"trade": 441, "bankroll": 17105.8, "mode": "ATTACK", "drawdown": 6.05}, {"trade": 442, "bankroll": 16685.76, "mode": "RECOVER", "drawdown": 8.36}, {"trade": 443, "bankroll": 14423.94, "mode": "RECOVER", "drawdown": 20.78}, {"trade": 444, "bankroll": 15077.67, "mode": "ATTACK", "drawdown": 17.19}, {"trade": 445, "bankroll": 14660.71, "mode": "RECOVER", "drawdown": 19.48}, {"trade": 446, "bankroll": 15119.48, "mode": "ATTACK", "drawdown": 16.96}, {"trade": 447, "bankroll": 15312.88, "mode": "ATTACK", "drawdown": 15.9}, {"trade": 448, "bankroll": 15508.51, "mode": "ATTACK", "drawdown": 14.82}, {"trade": 449, "bankroll": 15706.76, "mode": "ATTACK", "drawdown": 13.73}, {"trade": 450, "bankroll": 15988.26, "mode": "ATTACK", "drawdown": 12.19}, {"trade": 451, "bankroll": 15645.48, "mode": "RECOVER", "drawdown": 14.07}, {"trade": 452, "bankroll": 12251.58, "mode": "RECOVER", "drawdown": 32.71}, {"trade": 453, "bankroll": 13019.44, "mode": "ATTACK", "drawdown": 28.49}, {"trade": 454, "bankroll": 12739.96, "mode": "RECOVER", "drawdown": 30.03}, {"trade": 455, "bankroll": 13047.4, "mode": "ATTACK", "drawdown": 28.34}, {"trade": 456, "bankroll": 13662.6, "mode": "ATTACK", "drawdown": 24.96}, {"trade": 457, "bankroll": 14518.91, "mode": "ATTACK", "drawdown": 20.26}, {"trade": 458, "bankroll": 15514.82, "mode": "ATTACK", "drawdown": 14.79}, {"trade": 459, "bankroll": 16105.99, "mode": "ATTACK", "drawdown": 11.54}, {"trade": 460, "bankroll": 16354.27, "mode": "ATTACK", "drawdown": 10.18}, {"trade": 461, "bankroll": 16464.71, "mode": "ATTACK", "drawdown": 9.57}, {"trade": 462, "bankroll": 15918.23, "mode": "RECOVER", "drawdown": 12.57}, {"trade": 463, "bankroll": 13335.37, "mode": "RECOVER", "drawdown": 26.76}, {"trade": 464, "bankroll": 13452.79, "mode": "ATTACK", "drawdown": 26.11}, {"trade": 465, "bankroll": 13598.72, "mode": "ATTACK", "drawdown": 25.31}, {"trade": 466, "bankroll": 14307.89, "mode": "ATTACK", "drawdown": 21.42}, {"trade": 467, "bankroll": 13956.93, "mode": "RECOVER", "drawdown": 23.34}, {"trade": 468, "bankroll": 14343.03, "mode": "ATTACK", "drawdown": 21.22}, {"trade": 469, "bankroll": 13946.7, "mode": "RECOVER", "drawdown": 23.4}, {"trade": 470, "bankroll": 14382.66, "mode": "ATTACK", "drawdown": 21.01}, {"trade": 471, "bankroll": 14833.29, "mode": "ATTACK", "drawdown": 18.53}, {"trade": 472, "bankroll": 14469.38, "mode": "RECOVER", "drawdown": 20.53}, {"trade": 473, "bankroll": 14869.79, "mode": "ATTACK", "drawdown": 18.33}, {"trade": 474, "bankroll": 14133.99, "mode": "RECOVER", "drawdown": 22.37}, {"trade": 475, "bankroll": 14943.43, "mode": "ATTACK", "drawdown": 17.93}, {"trade": 476, "bankroll": 14623.21, "mode": "RECOVER", "drawdown": 19.68}, {"trade": 477, "bankroll": 14975.52, "mode": "ATTACK", "drawdown": 17.75}, {"trade": 478, "bankroll": 13998.69, "mode": "RECOVER", "drawdown": 23.11}, {"trade": 479, "bankroll": 15073.25, "mode": "ATTACK", "drawdown": 17.21}, {"trade": 480, "bankroll": 15303.17, "mode": "ATTACK", "drawdown": 15.95}, {"trade": 481, "bankroll": 14880.14, "mode": "RECOVER", "drawdown": 18.27}, {"trade": 482, "bankroll": 15345.53, "mode": "ATTACK", "drawdown": 15.72}, {"trade": 483, "bankroll": 15541.54, "mode": "ATTACK", "drawdown": 14.64}, {"trade": 484, "bankroll": 16137.11, "mode": "ATTACK", "drawdown": 11.37}, {"trade": 485, "bankroll": 16627.61, "mode": "ATTACK", "drawdown": 8.68}, {"trade": 486, "bankroll": 14854.01, "mode": "RECOVER", "drawdown": 18.42}, {"trade": 487, "bankroll": 16805.05, "mode": "ATTACK", "drawdown": 7.7}, {"trade": 488, "bankroll": 17106.14, "mode": "ATTACK", "drawdown": 6.05}, {"trade": 489, "bankroll": 17404.65, "mode": "ATTACK", "drawdown": 4.41}, {"trade": 490, "bankroll": 16597.72, "mode": "RECOVER", "drawdown": 8.84}, {"trade": 491, "bankroll": 17485.4, "mode": "ATTACK", "drawdown": 3.96}, {"trade": 492, "bankroll": 18085.59, "mode": "ATTACK", "drawdown": 0.67}, {"trade": 493, "bankroll": 17641.49, "mode": "RECOVER", "drawdown": 3.11}, {"trade": 494, "bankroll": 18130.04, "mode": "ATTACK", "drawdown": 0.42}, {"trade": 495, "bankroll": 18561.87, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 496, "bankroll": 18932.65, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 497, "bankroll": 19062.63, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 498, "bankroll": 19353.48, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 499, "bankroll": 18818.16, "mode": "RECOVER", "drawdown": 2.77}, {"trade": 500, "bankroll": 19407.1, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 501, "bankroll": 18810.05, "mode": "RECOVER", "drawdown": 3.08}, {"trade": 502, "bankroll": 15987.88, "mode": "RECOVER", "drawdown": 17.62}, {"trade": 503, "bankroll": 16118.55, "mode": "ATTACK", "drawdown": 16.95}, {"trade": 504, "bankroll": 16555.25, "mode": "ATTACK", "drawdown": 14.69}, {"trade": 505, "bankroll": 16691.39, "mode": "ATTACK", "drawdown": 13.99}, {"trade": 506, "bankroll": 16073.12, "mode": "RECOVER", "drawdown": 17.18}, {"trade": 507, "bankroll": 16753.24, "mode": "ATTACK", "drawdown": 13.67}, {"trade": 508, "bankroll": 18366.43, "mode": "ATTACK", "drawdown": 5.36}, {"trade": 509, "bankroll": 17240.24, "mode": "RECOVER", "drawdown": 11.17}, {"trade": 510, "bankroll": 18479.12, "mode": "ATTACK", "drawdown": 4.78}, {"trade": 511, "bankroll": 18813.95, "mode": "ATTACK", "drawdown": 3.06}, {"trade": 512, "bankroll": 20348.06, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 513, "bankroll": 20770.35, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 514, "bankroll": 21405.95, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 515, "bankroll": 21732.43, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 516, "bankroll": 21266.2, "mode": "RECOVER", "drawdown": 2.15}, {"trade": 517, "bankroll": 21779.2, "mode": "ATTACK", "drawdown": 0.0}, {"trade": 518, "bankroll": 19940.7, "mode": "RECOVER", "drawdown": 8.44}, {"trade": 519, "bankroll": 11251.13, "mode": "RECOVER", "drawdown": 48.34}, {"trade": 520, "bankroll": 11519.06, "mode": "ATTACK", "drawdown": 47.11}, {"trade": 521, "bankroll": 11666.16, "mode": "ATTACK", "drawdown": 46.43}, {"trade": 522, "bankroll": 11402.64, "mode": "RECOVER", "drawdown": 47.64}, {"trade": 523, "bankroll": 11692.53, "mode": "ATTACK", "drawdown": 46.31}, {"trade": 524, "bankroll": 11186.98, "mode": "RECOVER", "drawdown": 48.63}, {"trade": 525, "bankroll": 11743.14, "mode": "ATTACK", "drawdown": 46.08}, {"trade": 526, "bankroll": 11460.18, "mode": "RECOVER", "drawdown": 47.38}, {"trade": 527, "bankroll": 11771.53, "mode": "ATTACK", "drawdown": 45.95}, {"trade": 528, "bankroll": 12051.85, "mode": "ATTACK", "drawdown": 44.66}, {"trade": 529, "bankroll": 12267.64, "mode": "ATTACK", "drawdown": 43.67}, {"trade": 530, "bankroll": 11746.25, "mode": "RECOVER", "drawdown": 46.07}, {"trade": 531, "bankroll": 12319.82, "mode": "ATTACK", "drawdown": 43.43}, {"trade": 532, "bankroll": 12540.33, "mode": "ATTACK", "drawdown": 42.42}, {"trade": 533, "bankroll": 11958.95, "mode": "RECOVER", "drawdown": 45.09}, {"trade": 534, "bankroll": 12598.6, "mode": "ATTACK", "drawdown": 42.15}, {"trade": 535, "bankroll": 12702.22, "mode": "ATTACK", "drawdown": 41.68}, {"trade": 536, "bankroll": 12929.81, "mode": "ATTACK", "drawdown": 40.63}, {"trade": 537, "bankroll": 12249.34, "mode": "RECOVER", "drawdown": 43.76}, {"trade": 538, "bankroll": 12997.9, "mode": "ATTACK", "drawdown": 40.32}, {"trade": 539, "bankroll": 13307.54, "mode": "ATTACK", "drawdown": 38.9}, {"trade": 540, "bankroll": 13661.32, "mode": "ATTACK", "drawdown": 37.27}, {"trade": 541, "bankroll": 13781.4, "mode": "ATTACK", "drawdown": 36.72}, {"trade": 542, "bankroll": 13930.9, "mode": "ATTACK", "drawdown": 36.04}, {"trade": 543, "bankroll": 14145.37, "mode": "ATTACK", "drawdown": 35.05}, {"trade": 544, "bankroll": 14812.08, "mode": "ATTACK", "drawdown": 31.99}, {"trade": 545, "bankroll": 15320.64, "mode": "ATTACK", "drawdown": 29.65}, {"trade": 546, "bankroll": 15846.46, "mode": "ATTACK", "drawdown": 27.24}, {"trade": 547, "bankroll": 16130.25, "mode": "ATTACK", "drawdown": 25.94}, {"trade": 548, "bankroll": 15794.97, "mode": "RECOVER", "drawdown": 27.48}, {"trade": 549, "bankroll": 16163.78, "mode": "ATTACK", "drawdown": 25.78}, {"trade": 550, "bankroll": 15717.08, "mode": "RECOVER", "drawdown": 27.83}, {"trade": 551, "bankroll": 16208.48, "mode": "ATTACK", "drawdown": 25.58}, {"trade": 552, "bankroll": 15810.64, "mode": "RECOVER", "drawdown": 27.4}, {"trade": 553, "bankroll": 16248.33, "mode": "ATTACK", "drawdown": 25.4}, {"trade": 554, "bankroll": 16745.48, "mode": "ATTACK", "drawdown": 23.11}, {"trade": 555, "bankroll": 16126.09, "mode": "RECOVER", "drawdown": 25.96}, {"trade": 556, "bankroll": 16807.47, "mode": "ATTACK", "drawdown": 22.83}, {"trade": 557, "bankroll": 15985.28, "mode": "RECOVER", "drawdown": 26.6}, {"trade": 558, "bankroll": 16889.75, "mode": "ATTACK", "drawdown": 22.45}, {"trade": 559, "bankroll": 16053.98, "mode": "RECOVER", "drawdown": 26.29}, {"trade": 560, "bankroll": 16973.41, "mode": "ATTACK", "drawdown": 22.07}, {"trade": 561, "bankroll": 17492.62, "mode": "ATTACK", "drawdown": 19.68}, {"trade": 562, "bankroll": 16681.87, "mode": "RECOVER", "drawdown": 23.4}, {"trade": 563, "bankroll": 17573.8, "mode": "ATTACK", "drawdown": 19.31}, {"trade": 564, "bankroll": 17888.64, "mode": "ATTACK", "drawdown": 17.86}, {"trade": 565, "bankroll": 18117.13, "mode": "ATTACK", "drawdown": 16.81}, {"trade": 566, "bankroll": 17503.55, "mode": "RECOVER", "drawdown": 19.63}, {"trade": 567, "bankroll": 18178.51, "mode": "ATTACK", "drawdown": 16.53}, {"trade": 568, "bankroll": 18455.95, "mode": "ATTACK", "drawdown": 15.26}, {"trade": 569, "bankroll": 19242.25, "mode": "ATTACK", "drawdown": 11.65}, {"trade": 570, "bankroll": 19428.9, "mode": "ATTACK", "drawdown": 10.79}, {"trade": 571, "bankroll": 18588.4, "mode": "RECOVER", "drawdown": 14.65}, {"trade": 572, "bankroll": 19513.04, "mode": "ATTACK", "drawdown": 10.41}, {"trade": 573, "bankroll": 19800.75, "mode": "ATTACK", "drawdown": 9.08}, {"trade": 574, "bankroll": 20643.94, "mode": "ATTACK", "drawdown": 5.21}, {"trade": 575, "bankroll": 20976.83, "mode": "ATTACK", "drawdown": 3.68}, {"trade": 576, "bankroll": 21618.49, "mode": "ATTACK", "drawdown": 0.74}, {"trade": 577, "bankroll": 20819.0, "mode": "RECOVER", "drawdown": 4.41}, {"trade": 578, "bankroll": 10705.44, "mode": "RECOVER", "drawdown": 50.85}, {"trade": 579, "bankroll": 10868.69, "mode": "ATTACK", "drawdown": 50.1}, {"trade": 580, "bankroll": 11036.26, "mode": "ATTACK", "drawdown": 49.33}, {"trade": 581, "bankroll": 11428.46, "mode": "ATTACK", "drawdown": 47.53}, {"trade": 582, "bankroll": 11602.82, "mode": "ATTACK", "drawdown": 46.73}, {"trade": 583, "bankroll": 11879.01, "mode": "ATTACK", "drawdown": 45.46}, {"trade": 584, "bankroll": 12030.96, "mode": "ATTACK", "drawdown": 44.76}, {"trade": 585, "bankroll": 12129.74, "mode": "ATTACK", "drawdown": 44.31}, {"trade": 586, "bankroll": 12546.24, "mode": "ATTACK", "drawdown": 42.39}, {"trade": 587, "bankroll": 12207.63, "mode": "RECOVER", "drawdown": 43.95}, {"trade": 588, "bankroll": 10252.11, "mode": "RECOVER", "drawdown": 52.93}, {"trade": 589, "bankroll": 9872.36, "mode": "RECOVER", "drawdown": 54.67}, {"trade": 590, "bankroll": 10290.12, "mode": "ATTACK", "drawdown": 52.75}, {"trade": 591, "bankroll": 10439.62, "mode": "ATTACK", "drawdown": 52.07}];
+        const tradesData = [{"num": 1, "timestamp": "2026-02-28 03:57:12.547803+00:00", "mode": "ATTACK", "entry_price": 75, "contracts": 34, "cost": 25.5, "fee": 0.45, "edge": 12.0, "bet_pct": 2.6, "bankroll_before": 1000, "outcome": "WIN", "profit": 8.05, "bankroll_after": 1008.05}, {"num": 2, "timestamp": "2026-02-28 04:06:03.617463+00:00", "mode": "ATTACK", "entry_price": 45, "contracts": 154, "cost": 69.3, "fee": 2.67, "edge": 26.3, "bet_pct": 6.9, "bankroll_before": 1008.05, "outcome": "LOSS", "profit": -71.97, "bankroll_after": 936.09}, {"num": 3, "timestamp": "2026-02-28 04:41:00.221733+00:00", "mode": "RECOVER", "entry_price": 91, "contracts": 990, "cost": 900.9, "fee": 9.9, "edge": 0, "bet_pct": 0, "bankroll_before": 936.09, "outcome": "WIN", "profit": 79.2, "bankroll_after": 1015.29}, {"num": 4, "timestamp": "2026-02-28 04:51:00.305365+00:00", "mode": "ATTACK", "entry_price": 55, "contracts": 71, "cost": 39.05, "fee": 1.23, "edge": 16.3, "bet_pct": 3.9, "bankroll_before": 1015.29, "outcome": "LOSS", "profit": -40.28, "bankroll_after": 975.01}, {"num": 5, "timestamp": "2026-02-28 05:11:00.866891+00:00", "mode": "RECOVER", "entry_price": 84, "contracts": 296, "cost": 248.64, "fee": 2.96, "edge": 0, "bet_pct": 0, "bankroll_before": 975.01, "outcome": "WIN", "profit": 44.4, "bankroll_after": 1019.41}, {"num": 6, "timestamp": "2026-02-28 06:06:35.758097+00:00", "mode": "ATTACK", "entry_price": 53, "contracts": 86, "cost": 45.58, "fee": 1.5, "edge": 18.3, "bet_pct": 4.5, "bankroll_before": 1019.41, "outcome": "WIN", "profit": 38.92, "bankroll_after": 1058.33}, {"num": 7, "timestamp": "2026-02-28 08:24:43.968051+00:00", "mode": "ATTACK", "entry_price": 68, "contracts": 36, "cost": 24.48, "fee": 0.55, "edge": 11.2, "bet_pct": 2.4, "bankroll_before": 1058.33, "outcome": "LOSS", "profit": -25.03, "bankroll_after": 1033.3}, {"num": 8, "timestamp": "2026-02-28 08:41:29.089723+00:00", "mode": "RECOVER", "entry_price": 80, "contracts": 146, "cost": 116.8, "fee": 1.64, "edge": 0, "bet_pct": 0, "bankroll_before": 1033.3, "outcome": "LOSS", "profit": -118.44, "bankroll_after": 914.86}, {"num": 9, "timestamp": "2026-02-28 08:56:00.326809+00:00", "mode": "RECOVER", "entry_price": 84, "contracts": 1053, "cost": 884.52, "fee": 10.53, "edge": 0, "bet_pct": 0, "bankroll_before": 914.86, "outcome": "WIN", "profit": 157.95, "bankroll_after": 1072.81}, {"num": 10, "timestamp": "2026-02-28 09:08:13.687295+00:00", "mode": "ATTACK", "entry_price": 64, "contracts": 47, "cost": 30.08, "fee": 0.76, "edge": 12.7, "bet_pct": 2.8, "bankroll_before": 1072.81, "outcome": "WIN", "profit": 16.16, "bankroll_after": 1088.97}, {"num": 11, "timestamp": "2026-02-28 09:22:31.652483+00:00", "mode": "ATTACK", "entry_price": 56, "contracts": 86, "cost": 48.16, "fee": 1.48, "edge": 18.1, "bet_pct": 4.4, "bankroll_before": 1088.97, "outcome": "LOSS", "profit": -49.64, "bankroll_after": 1039.33}, {"num": 12, "timestamp": "2026-02-28 09:56:59.125431+00:00", "mode": "RECOVER", "entry_price": 84, "contracts": 365, "cost": 306.6, "fee": 3.65, "edge": 0, "bet_pct": 0, "bankroll_before": 1039.33, "outcome": "WIN", "profit": 54.75, "bankroll_after": 1094.08}, {"num": 13, "timestamp": "2026-02-28 10:51:10.380844+00:00", "mode": "ATTACK", "entry_price": 46, "contracts": 156, "cost": 71.76, "fee": 2.71, "edge": 25.3, "bet_pct": 6.6, "bankroll_before": 1094.08, "outcome": "WIN", "profit": 81.53, "bankroll_after": 1175.61}, {"num": 14, "timestamp": "2026-02-28 11:24:24.753272+00:00", "mode": "ATTACK", "entry_price": 69, "contracts": 35, "cost": 24.15, "fee": 0.52, "edge": 10.2, "bet_pct": 2.1, "bankroll_before": 1175.61, "outcome": "WIN", "profit": 10.33, "bankroll_after": 1185.93}, {"num": 15, "timestamp": "2026-02-28 11:51:03.775543+00:00", "mode": "ATTACK", "entry_price": 55, "contracts": 83, "cost": 45.65, "fee": 1.44, "edge": 16.3, "bet_pct": 3.9, "bankroll_before": 1185.93, "outcome": "LOSS", "profit": -47.09, "bankroll_after": 1138.85}, {"num": 16, "timestamp": "2026-02-28 12:11:02.117456+00:00", "mode": "RECOVER", "entry_price": 91, "contracts": 648, "cost": 589.68, "fee": 6.48, "edge": 0, "bet_pct": 0, "bankroll_before": 1138.85, "outcome": "WIN", "profit": 51.84, "bankroll_after": 1190.69}, {"num": 17, "timestamp": "2026-02-28 12:36:02.769375+00:00", "mode": "ATTACK", "entry_price": 60, "contracts": 47, "cost": 28.2, "fee": 0.79, "edge": 11.3, "bet_pct": 2.4, "bankroll_before": 1190.69, "outcome": "WIN", "profit": 18.01, "bankroll_after": 1208.7}, {"num": 18, "timestamp": "2026-02-28 12:57:47.439550+00:00", "mode": "ATTACK", "entry_price": 74, "contracts": 47, "cost": 34.78, "fee": 0.63, "edge": 13.0, "bet_pct": 2.9, "bankroll_before": 1208.7, "outcome": "WIN", "profit": 11.59, "bankroll_after": 1220.28}, {"num": 19, "timestamp": "2026-02-28 13:06:49.442011+00:00", "mode": "ATTACK", "entry_price": 56, "contracts": 78, "cost": 43.68, "fee": 1.35, "edge": 15.3, "bet_pct": 3.6, "bankroll_before": 1220.28, "outcome": "LOSS", "profit": -45.03, "bankroll_after": 1175.26}, {"num": 20, "timestamp": "2026-02-28 13:28:28.289798+00:00", "mode": "RECOVER", "entry_price": 83, "contracts": 310, "cost": 257.3, "fee": 3.1, "edge": 0, "bet_pct": 0, "bankroll_before": 1175.26, "outcome": "WIN", "profit": 49.6, "bankroll_after": 1224.86}, {"num": 21, "timestamp": "2026-02-28 13:38:41.247749+00:00", "mode": "ATTACK", "entry_price": 63, "contracts": 60, "cost": 37.8, "fee": 0.98, "edge": 13.7, "bet_pct": 3.1, "bankroll_before": 1224.86, "outcome": "LOSS", "profit": -38.78, "bankroll_after": 1186.08}, {"num": 22, "timestamp": "2026-02-28 14:11:02.175592+00:00", "mode": "RECOVER", "entry_price": 91, "contracts": 534, "cost": 485.94, "fee": 5.34, "edge": 0, "bet_pct": 0, "bankroll_before": 1186.08, "outcome": "WIN", "profit": 42.72, "bankroll_after": 1228.8}, {"num": 23, "timestamp": "2026-02-28 14:24:16.581485+00:00", "mode": "ATTACK", "entry_price": 69, "contracts": 36, "cost": 24.84, "fee": 0.54, "edge": 10.2, "bet_pct": 2.1, "bankroll_before": 1228.8, "outcome": "WIN", "profit": 10.62, "bankroll_after": 1239.42}, {"num": 24, "timestamp": "2026-02-28 15:08:10.650957+00:00", "mode": "ATTACK", "entry_price": 64, "contracts": 54, "cost": 34.56, "fee": 0.87, "edge": 12.7, "bet_pct": 2.8, "bankroll_before": 1239.42, "outcome": "LOSS", "profit": -35.43, "bankroll_after": 1203.99}, {"num": 25, "timestamp": "2026-02-28 15:41:15.001987+00:00", "mode": "RECOVER", "entry_price": 82, "contracts": 230, "cost": 188.6, "fee": 2.38, "edge": 0, "bet_pct": 0, "bankroll_before": 1203.99, "outcome": "WIN", "profit": 39.02, "bankroll_after": 1243.01}, {"num": 26, "timestamp": "2026-02-28 15:51:04.269023+00:00", "mode": "ATTACK", "entry_price": 49, "contracts": 144, "cost": 70.56, "fee": 2.52, "edge": 22.3, "bet_pct": 5.7, "bankroll_before": 1243.01, "outcome": "WIN", "profit": 70.92, "bankroll_after": 1313.93}, {"num": 27, "timestamp": "2026-02-28 16:08:16.360756+00:00", "mode": "ATTACK", "entry_price": 55, "contracts": 131, "cost": 72.05, "fee": 2.27, "edge": 21.7, "bet_pct": 5.5, "bankroll_before": 1313.93, "outcome": "LOSS", "profit": -74.32, "bankroll_after": 1239.61}, {"num": 28, "timestamp": "2026-02-28 16:26:01.453401+00:00", "mode": "RECOVER", "entry_price": 92, "contracts": 1168, "cost": 1074.56, "fee": 11.68, "edge": 0, "bet_pct": 0, "bankroll_before": 1239.61, "outcome": "WIN", "profit": 81.76, "bankroll_after": 1321.37}, {"num": 29, "timestamp": "2026-02-28 16:36:04.624396+00:00", "mode": "ATTACK", "entry_price": 47, "contracts": 176, "cost": 82.72, "fee": 3.07, "edge": 24.3, "bet_pct": 6.3, "bankroll_before": 1321.37, "outcome": "WIN", "profit": 90.21, "bankroll_after": 1411.59}, {"num": 30, "timestamp": "2026-02-28 16:56:11.737483+00:00", "mode": "ATTACK", "entry_price": 69, "contracts": 72, "cost": 49.68, "fee": 1.08, "edge": 15.1, "bet_pct": 3.5, "bankroll_before": 1411.59, "outcome": "WIN", "profit": 21.24, "bankroll_after": 1432.83}, {"num": 31, "timestamp": "2026-02-28 17:22:04.644258+00:00", "mode": "ATTACK", "entry_price": 56, "contracts": 113, "cost": 63.28, "fee": 1.95, "edge": 18.1, "bet_pct": 4.4, "bankroll_before": 1432.83, "outcome": "LOSS", "profit": -65.23, "bankroll_after": 1367.6}, {"num": 32, "timestamp": "2026-02-28 18:11:22.316921+00:00", "mode": "RECOVER", "entry_price": 82, "contracts": 423, "cost": 346.86, "fee": 4.37, "edge": 0, "bet_pct": 0, "bankroll_before": 1367.6, "outcome": "WIN", "profit": 71.77, "bankroll_after": 1439.37}, {"num": 33, "timestamp": "2026-02-28 18:21:02.772320+00:00", "mode": "ATTACK", "entry_price": 57, "contracts": 83, "cost": 47.31, "fee": 1.42, "edge": 14.3, "bet_pct": 3.3, "bankroll_before": 1439.37, "outcome": "LOSS", "profit": -48.73, "bankroll_after": 1390.63}, {"num": 34, "timestamp": "2026-02-28 19:26:01.465568+00:00", "mode": "RECOVER", "entry_price": 91, "contracts": 671, "cost": 610.61, "fee": 6.71, "edge": 0, "bet_pct": 0, "bankroll_before": 1390.63, "outcome": "LOSS", "profit": -617.32, "bankroll_after": 773.31}, {"num": 35, "timestamp": "2026-02-28 19:56:43.012424+00:00", "mode": "ATTACK", "entry_price": 72, "contracts": 28, "cost": 20.16, "fee": 0.4, "edge": 12.1, "bet_pct": 2.6, "bankroll_before": 773.31, "outcome": "WIN", "profit": 7.44, "bankroll_after": 780.76}, {"num": 36, "timestamp": "2026-02-28 20:09:49.674632+00:00", "mode": "ATTACK", "entry_price": 58, "contracts": 72, "cost": 41.76, "fee": 1.23, "edge": 21.2, "bet_pct": 5.4, "bankroll_before": 780.76, "outcome": "LOSS", "profit": -42.99, "bankroll_after": 737.77}, {"num": 37, "timestamp": "2026-02-28 20:43:45.448700+00:00", "mode": "RECOVER", "entry_price": 86, "contracts": 364, "cost": 313.04, "fee": 3.64, "edge": 0, "bet_pct": 0, "bankroll_before": 737.77, "outcome": "WIN", "profit": 47.32, "bankroll_after": 785.09}, {"num": 38, "timestamp": "2026-02-28 21:23:07.727051+00:00", "mode": "ATTACK", "entry_price": 65, "contracts": 30, "cost": 19.5, "fee": 0.48, "edge": 11.7, "bet_pct": 2.5, "bankroll_before": 785.09, "outcome": "WIN", "profit": 10.02, "bankroll_after": 795.11}, {"num": 39, "timestamp": "2026-02-28 22:51:03.514271+00:00", "mode": "ATTACK", "entry_price": 50, "contracts": 85, "cost": 42.5, "fee": 1.49, "edge": 21.3, "bet_pct": 5.4, "bankroll_before": 795.11, "outcome": "WIN", "profit": 41.01, "bankroll_after": 836.13}, {"num": 40, "timestamp": "2026-02-28 23:06:03.149958+00:00", "mode": "ATTACK", "entry_price": 49, "contracts": 97, "cost": 47.53, "fee": 1.7, "edge": 22.3, "bet_pct": 5.7, "bankroll_before": 836.13, "outcome": "WIN", "profit": 47.77, "bankroll_after": 883.9}, {"num": 41, "timestamp": "2026-02-28 23:22:01.691503+00:00", "mode": "ATTACK", "entry_price": 64, "contracts": 28, "cost": 17.92, "fee": 0.45, "edge": 10.1, "bet_pct": 2.0, "bankroll_before": 883.9, "outcome": "LOSS", "profit": -18.37, "bankroll_after": 865.53}, {"num": 42, "timestamp": "2026-02-28 23:56:01.504228+00:00", "mode": "RECOVER", "entry_price": 89, "contracts": 203, "cost": 180.67, "fee": 2.03, "edge": 0, "bet_pct": 0, "bankroll_before": 865.53, "outcome": "WIN", "profit": 20.3, "bankroll_after": 885.83}, {"num": 43, "timestamp": "2026-03-01 00:06:23.382780+00:00", "mode": "ATTACK", "entry_price": 58, "contracts": 45, "cost": 26.1, "fee": 0.77, "edge": 13.3, "bet_pct": 3.0, "bankroll_before": 885.83, "outcome": "LOSS", "profit": -26.87, "bankroll_after": 858.96}, {"num": 44, "timestamp": "2026-03-01 00:26:04.410076+00:00", "mode": "RECOVER", "entry_price": 80, "contracts": 157, "cost": 125.6, "fee": 1.76, "edge": 0, "bet_pct": 0, "bankroll_before": 858.96, "outcome": "WIN", "profit": 29.64, "bankroll_after": 888.6}, {"num": 45, "timestamp": "2026-03-01 00:36:14.470688+00:00", "mode": "ATTACK", "entry_price": 60, "contracts": 35, "cost": 21.0, "fee": 0.59, "edge": 11.3, "bet_pct": 2.4, "bankroll_before": 888.6, "outcome": "WIN", "profit": 13.41, "bankroll_after": 902.01}, {"num": 46, "timestamp": "2026-03-01 01:21:02.321855+00:00", "mode": "ATTACK", "entry_price": 52, "contracts": 83, "cost": 43.16, "fee": 1.45, "edge": 19.3, "bet_pct": 4.8, "bankroll_before": 902.01, "outcome": "LOSS", "profit": -44.61, "bankroll_after": 857.4}, {"num": 47, "timestamp": "2026-03-01 02:26:00.821842+00:00", "mode": "RECOVER", "entry_price": 90, "contracts": 546, "cost": 491.4, "fee": 5.46, "edge": 0, "bet_pct": 0, "bankroll_before": 857.4, "outcome": "WIN", "profit": 49.14, "bankroll_after": 906.54}, {"num": 48, "timestamp": "2026-03-01 02:37:25.622158+00:00", "mode": "ATTACK", "entry_price": 61, "contracts": 43, "cost": 26.23, "fee": 0.72, "edge": 13.1, "bet_pct": 2.9, "bankroll_before": 906.54, "outcome": "WIN", "profit": 16.05, "bankroll_after": 922.6}, {"num": 49, "timestamp": "2026-03-01 03:06:04.346201+00:00", "mode": "ATTACK", "entry_price": 49, "contracts": 107, "cost": 52.43, "fee": 1.87, "edge": 22.3, "bet_pct": 5.7, "bankroll_before": 922.6, "outcome": "WIN", "profit": 52.7, "bankroll_after": 975.3}, {"num": 50, "timestamp": "2026-03-01 03:36:01.890879+00:00", "mode": "ATTACK", "entry_price": 59, "contracts": 44, "cost": 25.96, "fee": 0.75, "edge": 12.3, "bet_pct": 2.7, "bankroll_before": 975.3, "outcome": "LOSS", "profit": -26.71, "bankroll_after": 948.59}, {"num": 51, "timestamp": "2026-03-01 03:56:00.952002+00:00", "mode": "RECOVER", "entry_price": 88, "contracts": 268, "cost": 235.84, "fee": 2.68, "edge": 0, "bet_pct": 0, "bankroll_before": 948.59, "outcome": "WIN", "profit": 29.48, "bankroll_after": 978.07}, {"num": 52, "timestamp": "2026-03-01 04:06:04.722583+00:00", "mode": "ATTACK", "entry_price": 58, "contracts": 50, "cost": 29.0, "fee": 0.85, "edge": 13.3, "bet_pct": 3.0, "bankroll_before": 978.07, "outcome": "WIN", "profit": 20.15, "bankroll_after": 998.22}, {"num": 53, "timestamp": "2026-03-01 04:36:04.067762+00:00", "mode": "ATTACK", "entry_price": 57, "contracts": 57, "cost": 32.49, "fee": 0.98, "edge": 14.3, "bet_pct": 3.3, "bankroll_before": 998.22, "outcome": "WIN", "profit": 23.53, "bankroll_after": 1021.75}, {"num": 54, "timestamp": "2026-03-01 04:51:52.694947+00:00", "mode": "ATTACK", "entry_price": 56, "contracts": 65, "cost": 36.4, "fee": 1.12, "edge": 15.3, "bet_pct": 3.6, "bankroll_before": 1021.75, "outcome": "WIN", "profit": 27.48, "bankroll_after": 1049.23}, {"num": 55, "timestamp": "2026-03-01 05:10:04.094906+00:00", "mode": "ATTACK", "entry_price": 54, "contracts": 140, "cost": 75.6, "fee": 2.43, "edge": 27.4, "bet_pct": 7.2, "bankroll_before": 1049.23, "outcome": "LOSS", "profit": -78.03, "bankroll_after": 971.19}, {"num": 56, "timestamp": "2026-03-01 06:27:44.095684+00:00", "mode": "RECOVER", "entry_price": 82, "contracts": 506, "cost": 414.92, "fee": 5.23, "edge": 0, "bet_pct": 0, "bankroll_before": 971.19, "outcome": "WIN", "profit": 85.85, "bankroll_after": 1057.05}, {"num": 57, "timestamp": "2026-03-01 06:51:01.004924+00:00", "mode": "ATTACK", "entry_price": 55, "contracts": 74, "cost": 40.7, "fee": 1.28, "edge": 16.3, "bet_pct": 3.9, "bankroll_before": 1057.05, "outcome": "LOSS", "profit": -41.98, "bankroll_after": 1015.06}, {"num": 58, "timestamp": "2026-03-01 07:11:41.627200+00:00", "mode": "RECOVER", "entry_price": 90, "contracts": 514, "cost": 462.6, "fee": 5.14, "edge": 0, "bet_pct": 0, "bankroll_before": 1015.06, "outcome": "WIN", "profit": 46.26, "bankroll_after": 1061.32}, {"num": 59, "timestamp": "2026-03-01 07:21:36.900917+00:00", "mode": "ATTACK", "entry_price": 59, "contracts": 48, "cost": 28.32, "fee": 0.81, "edge": 12.3, "bet_pct": 2.7, "bankroll_before": 1061.32, "outcome": "WIN", "profit": 18.87, "bankroll_after": 1080.19}, {"num": 60, "timestamp": "2026-03-01 07:51:02.279480+00:00", "mode": "ATTACK", "entry_price": 60, "contracts": 43, "cost": 25.8, "fee": 0.72, "edge": 11.3, "bet_pct": 2.4, "bankroll_before": 1080.19, "outcome": "WIN", "profit": 16.48, "bankroll_after": 1096.67}, {"num": 61, "timestamp": "2026-03-01 08:09:35.476350+00:00", "mode": "ATTACK", "entry_price": 45, "contracts": 194, "cost": 87.3, "fee": 3.36, "edge": 34.2, "bet_pct": 8.0, "bankroll_before": 1096.67, "outcome": "LOSS", "profit": -90.66, "bankroll_after": 1006.01}, {"num": 62, "timestamp": "2026-03-01 08:42:44.832730+00:00", "mode": "RECOVER", "entry_price": 80, "contracts": 529, "cost": 423.2, "fee": 5.92, "edge": 0, "bet_pct": 0, "bankroll_before": 1006.01, "outcome": "WIN", "profit": 99.88, "bankroll_after": 1105.88}, {"num": 63, "timestamp": "2026-03-01 09:06:01.027820+00:00", "mode": "ATTACK", "entry_price": 53, "contracts": 93, "cost": 49.29, "fee": 1.62, "edge": 18.3, "bet_pct": 4.5, "bankroll_before": 1105.88, "outcome": "WIN", "profit": 42.09, "bankroll_after": 1147.97}, {"num": 64, "timestamp": "2026-03-01 09:25:03.435075+00:00", "mode": "ATTACK", "entry_price": 63, "contracts": 82, "cost": 51.66, "fee": 1.34, "edge": 18.4, "bet_pct": 4.5, "bankroll_before": 1147.97, "outcome": "WIN", "profit": 29.0, "bankroll_after": 1176.97}, {"num": 65, "timestamp": "2026-03-01 09:51:06.775714+00:00", "mode": "ATTACK", "entry_price": 59, "contracts": 53, "cost": 31.27, "fee": 0.9, "edge": 12.3, "bet_pct": 2.7, "bankroll_before": 1176.97, "outcome": "WIN", "profit": 20.83, "bankroll_after": 1197.81}, {"num": 66, "timestamp": "2026-03-01 10:06:00.205290+00:00", "mode": "ATTACK", "entry_price": 56, "contracts": 76, "cost": 42.56, "fee": 1.31, "edge": 15.3, "bet_pct": 3.6, "bankroll_before": 1197.81, "outcome": "LOSS", "profit": -43.87, "bankroll_after": 1153.94}, {"num": 67, "timestamp": "2026-03-01 10:26:07.902143+00:00", "mode": "RECOVER", "entry_price": 83, "contracts": 302, "cost": 250.66, "fee": 3.02, "edge": 0, "bet_pct": 0, "bankroll_before": 1153.94, "outcome": "WIN", "profit": 48.32, "bankroll_after": 1202.26}, {"num": 68, "timestamp": "2026-03-01 10:39:22.895795+00:00", "mode": "ATTACK", "entry_price": 56, "contracts": 127, "cost": 71.12, "fee": 2.19, "edge": 23.2, "bet_pct": 6.0, "bankroll_before": 1202.26, "outcome": "LOSS", "profit": -73.31, "bankroll_after": 1128.95}, {"num": 69, "timestamp": "2026-03-01 11:11:01.262824+00:00", "mode": "RECOVER", "entry_price": 84, "contracts": 538, "cost": 451.92, "fee": 5.38, "edge": 0, "bet_pct": 0, "bankroll_before": 1128.95, "outcome": "WIN", "profit": 80.7, "bankroll_after": 1209.65}, {"num": 70, "timestamp": "2026-03-01 11:23:18.275161+00:00", "mode": "ATTACK", "entry_price": 65, "contracts": 46, "cost": 29.9, "fee": 0.73, "edge": 11.7, "bet_pct": 2.5, "bankroll_before": 1209.65, "outcome": "WIN", "profit": 15.37, "bankroll_after": 1225.01}, {"num": 71, "timestamp": "2026-03-01 11:40:20.127714+00:00", "mode": "ATTACK", "entry_price": 67, "contracts": 60, "cost": 40.2, "fee": 0.93, "edge": 14.4, "bet_pct": 3.3, "bankroll_before": 1225.01, "outcome": "WIN", "profit": 18.87, "bankroll_after": 1243.88}, {"num": 72, "timestamp": "2026-03-01 11:51:04.450083+00:00", "mode": "ATTACK", "entry_price": 58, "contracts": 64, "cost": 37.12, "fee": 1.09, "edge": 13.3, "bet_pct": 3.0, "bankroll_before": 1243.88, "outcome": "WIN", "profit": 25.79, "bankroll_after": 1269.67}, {"num": 73, "timestamp": "2026-03-01 12:06:10.734968+00:00", "mode": "ATTACK", "entry_price": 42, "contracts": 235, "cost": 98.7, "fee": 4.01, "edge": 29.3, "bet_pct": 7.8, "bankroll_before": 1269.67, "outcome": "LOSS", "profit": -102.71, "bankroll_after": 1166.97}, {"num": 74, "timestamp": "2026-03-01 12:26:08.027144+00:00", "mode": "RECOVER", "entry_price": 86, "contracts": 870, "cost": 748.2, "fee": 8.7, "edge": 0, "bet_pct": 0, "bankroll_before": 1166.97, "outcome": "WIN", "profit": 113.1, "bankroll_after": 1280.07}, {"num": 75, "timestamp": "2026-03-01 12:42:21.852188+00:00", "mode": "ATTACK", "entry_price": 67, "contracts": 95, "cost": 63.65, "fee": 1.47, "edge": 20.0, "bet_pct": 5.0, "bankroll_before": 1280.07, "outcome": "LOSS", "profit": -65.12, "bankroll_after": 1214.95}, {"num": 76, "timestamp": "2026-03-01 13:12:13.270906+00:00", "mode": "RECOVER", "entry_price": 84, "contracts": 478, "cost": 401.52, "fee": 4.78, "edge": 0, "bet_pct": 0, "bankroll_before": 1214.95, "outcome": "WIN", "profit": 71.7, "bankroll_after": 1286.65}, {"num": 77, "timestamp": "2026-03-01 13:26:50.887960+00:00", "mode": "ATTACK", "entry_price": 71, "contracts": 53, "cost": 37.63, "fee": 0.76, "edge": 13.1, "bet_pct": 2.9, "bankroll_before": 1286.65, "outcome": "WIN", "profit": 14.61, "bankroll_after": 1301.25}, {"num": 78, "timestamp": "2026-03-01 13:36:04.465843+00:00", "mode": "ATTACK", "entry_price": 55, "contracts": 92, "cost": 50.6, "fee": 1.59, "edge": 16.3, "bet_pct": 3.9, "bankroll_before": 1301.25, "outcome": "LOSS", "profit": -52.19, "bankroll_after": 1249.06}, {"num": 79, "timestamp": "2026-03-01 14:11:48.383276+00:00", "mode": "RECOVER", "entry_price": 86, "contracts": 442, "cost": 380.12, "fee": 4.42, "edge": 0, "bet_pct": 0, "bankroll_before": 1249.06, "outcome": "WIN", "profit": 57.46, "bankroll_after": 1306.52}, {"num": 80, "timestamp": "2026-03-01 14:36:09.240616+00:00", "mode": "ATTACK", "entry_price": 59, "contracts": 59, "cost": 34.81, "fee": 1.0, "edge": 12.3, "bet_pct": 2.7, "bankroll_before": 1306.52, "outcome": "LOSS", "profit": -35.81, "bankroll_after": 1270.71}, {"num": 81, "timestamp": "2026-03-01 14:58:01.248671+00:00", "mode": "RECOVER", "entry_price": 81, "contracts": 220, "cost": 178.2, "fee": 2.37, "edge": 0, "bet_pct": 0, "bankroll_before": 1270.71, "outcome": "WIN", "profit": 39.43, "bankroll_after": 1310.14}, {"num": 82, "timestamp": "2026-03-01 15:07:08.847018+00:00", "mode": "ATTACK", "entry_price": 58, "contracts": 86, "cost": 49.88, "fee": 1.47, "edge": 16.1, "bet_pct": 3.8, "bankroll_before": 1310.14, "outcome": "WIN", "profit": 34.65, "bankroll_after": 1344.79}, {"num": 83, "timestamp": "2026-03-01 15:21:47.080244+00:00", "mode": "ATTACK", "entry_price": 61, "contracts": 46, "cost": 28.06, "fee": 0.77, "edge": 10.3, "bet_pct": 2.1, "bankroll_before": 1344.79, "outcome": "WIN", "profit": 17.17, "bankroll_after": 1361.97}, {"num": 84, "timestamp": "2026-03-01 15:37:09.202417+00:00", "mode": "ATTACK", "entry_price": 59, "contracts": 81, "cost": 47.79, "fee": 1.37, "edge": 15.1, "bet_pct": 3.5, "bankroll_before": 1361.97, "outcome": "WIN", "profit": 31.84, "bankroll_after": 1393.8}, {"num": 85, "timestamp": "2026-03-01 15:51:04.456133+00:00", "mode": "ATTACK", "entry_price": 60, "contracts": 55, "cost": 33.0, "fee": 0.92, "edge": 11.3, "bet_pct": 2.4, "bankroll_before": 1393.8, "outcome": "LOSS", "profit": -33.92, "bankroll_after": 1359.88}, {"num": 86, "timestamp": "2026-03-01 16:27:17.082260+00:00", "mode": "RECOVER", "entry_price": 90, "contracts": 415, "cost": 373.5, "fee": 4.15, "edge": 0, "bet_pct": 0, "bankroll_before": 1359.88, "outcome": "WIN", "profit": 37.35, "bankroll_after": 1397.23}, {"num": 87, "timestamp": "2026-03-01 16:36:03.762783+00:00", "mode": "ATTACK", "entry_price": 46, "contracts": 200, "cost": 92.0, "fee": 3.48, "edge": 25.3, "bet_pct": 6.6, "bankroll_before": 1397.23, "outcome": "LOSS", "profit": -95.48, "bankroll_after": 1301.75}, {"num": 88, "timestamp": "2026-03-01 17:13:03.524157+00:00", "mode": "RECOVER", "entry_price": 91, "contracts": 1313, "cost": 1194.83, "fee": 13.13, "edge": 0, "bet_pct": 0, "bankroll_before": 1301.75, "outcome": "WIN", "profit": 105.04, "bankroll_after": 1406.79}, {"num": 89, "timestamp": "2026-03-01 17:24:50.782385+00:00", "mode": "ATTACK", "entry_price": 66, "contracts": 63, "cost": 41.58, "fee": 0.99, "edge": 13.2, "bet_pct": 3.0, "bankroll_before": 1406.79, "outcome": "WIN", "profit": 20.43, "bankroll_after": 1427.22}, {"num": 90, "timestamp": "2026-03-01 17:40:04.345471+00:00", "mode": "ATTACK", "entry_price": 71, "contracts": 42, "cost": 29.82, "fee": 0.61, "edge": 10.4, "bet_pct": 2.1, "bankroll_before": 1427.22, "outcome": "WIN", "profit": 11.57, "bankroll_after": 1438.8}, {"num": 91, "timestamp": "2026-03-01 17:51:01.869229+00:00", "mode": "ATTACK", "entry_price": 61, "contracts": 49, "cost": 29.89, "fee": 0.82, "edge": 10.3, "bet_pct": 2.1, "bankroll_before": 1438.8, "outcome": "WIN", "profit": 18.29, "bankroll_after": 1457.09}, {"num": 92, "timestamp": "2026-03-01 18:21:01.435605+00:00", "mode": "ATTACK", "entry_price": 60, "contracts": 58, "cost": 34.8, "fee": 0.97, "edge": 11.3, "bet_pct": 2.4, "bankroll_before": 1457.09, "outcome": "WIN", "profit": 22.23, "bankroll_after": 1479.32}, {"num": 93, "timestamp": "2026-03-01 18:36:04.787735+00:00", "mode": "ATTACK", "entry_price": 53, "contracts": 125, "cost": 66.25, "fee": 2.18, "edge": 18.3, "bet_pct": 4.5, "bankroll_before": 1479.32, "outcome": "WIN", "profit": 56.57, "bankroll_after": 1535.89}, {"num": 94, "timestamp": "2026-03-01 18:51:01.879807+00:00", "mode": "ATTACK", "entry_price": 60, "contracts": 61, "cost": 36.6, "fee": 1.02, "edge": 11.3, "bet_pct": 2.4, "bankroll_before": 1535.89, "outcome": "WIN", "profit": 23.38, "bankroll_after": 1559.26}, {"num": 95, "timestamp": "2026-03-01 19:06:00.990881+00:00", "mode": "ATTACK", "entry_price": 54, "contracts": 120, "cost": 64.8, "fee": 2.09, "edge": 17.3, "bet_pct": 4.2, "bankroll_before": 1559.26, "outcome": "WIN", "profit": 53.11, "bankroll_after": 1612.38}, {"num": 96, "timestamp": "2026-03-01 19:36:02.601591+00:00", "mode": "ATTACK", "entry_price": 53, "contracts": 136, "cost": 72.08, "fee": 2.37, "edge": 18.3, "bet_pct": 4.5, "bankroll_before": 1612.38, "outcome": "LOSS", "profit": -74.45, "bankroll_after": 1537.93}, {"num": 97, "timestamp": "2026-03-01 20:26:01.172792+00:00", "mode": "RECOVER", "entry_price": 85, "contracts": 585, "cost": 497.25, "fee": 5.85, "edge": 0, "bet_pct": 0, "bankroll_before": 1537.93, "outcome": "WIN", "profit": 81.9, "bankroll_after": 1619.83}, {"num": 98, "timestamp": "2026-03-01 21:06:01.802346+00:00", "mode": "ATTACK", "entry_price": 54, "contracts": 125, "cost": 67.5, "fee": 2.17, "edge": 17.3, "bet_pct": 4.2, "bankroll_before": 1619.83, "outcome": "LOSS", "profit": -69.67, "bankroll_after": 1550.15}, {"num": 99, "timestamp": "2026-03-01 21:26:01.730037+00:00", "mode": "RECOVER", "entry_price": 86, "contracts": 590, "cost": 507.4, "fee": 5.9, "edge": 0, "bet_pct": 0, "bankroll_before": 1550.15, "outcome": "WIN", "profit": 76.7, "bankroll_after": 1626.85}, {"num": 100, "timestamp": "2026-03-01 21:42:27.214364+00:00", "mode": "ATTACK", "entry_price": 75, "contracts": 56, "cost": 42.0, "fee": 0.74, "edge": 12.0, "bet_pct": 2.6, "bankroll_before": 1626.85, "outcome": "WIN", "profit": 13.27, "bankroll_after": 1640.12}];
+
+        // Equity Chart
+        const equityCtx = document.getElementById('equityChart').getContext('2d');
+        new Chart(equityCtx, {
+            type: 'line',
+            data: {
+                labels: equityData.map(d => d.trade),
+                datasets: [{
+                    label: 'Bankroll',
+                    data: equityData.map(d => d.bankroll),
+                    borderColor: '#00ff88',
+                    backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) { return '$' + ctx.raw.toLocaleString(); }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Trade #', color: '#888' },
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#888' }
+                    },
+                    y: {
+                        title: { display: true, text: 'Bankroll ($)', color: '#888' },
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: {
+                            color: '#888',
+                            callback: v => '$' + v.toLocaleString()
+                        }
+                    }
+                }
+            }
+        });
+
+        // Drawdown Chart
+        const ddCtx = document.getElementById('drawdownChart').getContext('2d');
+        new Chart(ddCtx, {
+            type: 'line',
+            data: {
+                labels: equityData.map(d => d.trade),
+                datasets: [{
+                    label: 'Drawdown %',
+                    data: equityData.map(d => -d.drawdown),
+                    borderColor: '#ff6b6b',
+                    backgroundColor: 'rgba(255, 107, 107, 0.3)',
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Trade #', color: '#888' },
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#888' }
+                    },
+                    y: {
+                        title: { display: true, text: 'Drawdown (%)', color: '#888' },
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: {
+                            color: '#888',
+                            callback: v => v + '%'
+                        },
+                        max: 0,
+                        min: -80
+                    }
+                }
+            }
+        });
+
+        // Mode Chart
+        const modeCtx = document.getElementById('modeChart').getContext('2d');
+        new Chart(modeCtx, {
+            type: 'bar',
+            data: {
+                labels: ['ATTACK Mode', 'RECOVER Mode'],
+                datasets: [
+                    {
+                        label: 'Wins',
+                        data: [257, 152],
+                        backgroundColor: '#00ff88',
+                    },
+                    {
+                        label: 'Losses',
+                        data: [166, 16],
+                        backgroundColor: '#ff6b6b',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#888' }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#888' }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#888' }
+                    }
+                }
+            }
+        });
+
+        // Populate trades table
+        const tbody = document.getElementById('tradesBody');
+        tradesData.forEach(t => {
+            const row = document.createElement('tr');
+            row.className = t.mode.toLowerCase();
+            row.innerHTML = `
+                <td>${t.num}</td>
+                <td><span class="badge ${t.mode.toLowerCase()}">${t.mode}</span></td>
+                <td>${t.entry_price}¢</td>
+                <td>${t.contracts}</td>
+                <td>$${t.cost}</td>
+                <td>${t.edge}%</td>
+                <td>${t.bet_pct}%</td>
+                <td><span class="badge ${t.outcome.toLowerCase()}">${t.outcome}</span></td>
+                <td class="${t.profit >= 0 ? 'win' : 'loss'}">$${t.profit}</td>
+                <td>$${t.bankroll_after.toLocaleString()}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    </script>
+</body>
+</html>
