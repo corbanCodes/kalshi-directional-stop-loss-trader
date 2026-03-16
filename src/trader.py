@@ -126,6 +126,9 @@ class Trader:
         # Track traded windows to prevent re-entry after stop loss
         self._traded_tickers: set[str] = set()
 
+        # Stop loss toggle (can be disabled from dashboard)
+        self.stop_loss_enabled = True
+
         # Logging
         self.log_path = self.config.logs_dir / f"trades_{datetime.now().strftime('%Y%m%d')}.json"
 
@@ -246,7 +249,7 @@ class Trader:
 
     def exit_position(self, ticker: str, side: str, contracts: int, target_price: int) -> tuple[bool, int]:
         """
-        Exit position by SELLING contracts with aggressive limit order.
+        Exit position by SELLING contracts. Tries limit order, then market order.
 
         Args:
             ticker: Market ticker
@@ -257,62 +260,87 @@ class Trader:
         Returns:
             (success, actual_fill_price)
         """
+        import requests
+
+        # Try 1: Limit order at aggressive price
         try:
-            # Use aggressive limit price (5c below bid) to guarantee fill
-            # The order will execute at the best available price
-            sell_price = max(1, target_price - 5)
+            sell_price = max(5, target_price - 5)  # Min 5c to avoid API rejection
+            self.log(f"STOP LOSS: SELLING {contracts} {side.upper()} @ {sell_price}c limit", "STOP")
 
-            self.log(f"STOP LOSS: SELLING {contracts} {side.upper()} @ {sell_price}c limit (bid was {target_price}c)", "STOP")
-
-            # Place LIMIT SELL order - NOT a buy, NOT opposite side
             order = self.client.place_order(
                 ticker=ticker,
-                side=side,  # Same side we own (e.g., "no")
-                action="sell",  # SELL to exit
+                side=side,
+                action="sell",
                 count=contracts,
-                price=sell_price,  # Aggressive price below bid
+                price=sell_price,
             )
 
-            self.log(f"SELL order placed: {order.order_id} (status: {order.status})", "STOP")
+            self.log(f"SELL order placed: {order.order_id}", "STOP")
 
-            # Check immediate fill
             if order.filled_count > 0:
                 actual_price = order.average_fill_price or target_price
-                self.log(f"SELL FILLED immediately: {order.filled_count} @ {actual_price}c", "STOP")
+                self.log(f"SELL FILLED: {order.filled_count} @ {actual_price}c", "STOP")
                 return True, actual_price
 
-            # Wait for fill
-            max_wait = 15
-            start = time.time()
-            while time.time() - start < max_wait:
+            # Wait briefly for fill
+            for _ in range(5):
+                time.sleep(1)
                 try:
                     updated = self.client.get_order(order.order_id)
-                    self.log(f"Order status: {updated.status}, filled: {updated.filled_count}/{contracts}", "DEBUG")
-
                     if updated.filled_count >= contracts:
                         actual_price = updated.average_fill_price or target_price
                         self.log(f"SELL FILLED: {updated.filled_count} @ {actual_price}c", "STOP")
                         return True, actual_price
-                    elif updated.status in ["canceled", "cancelled"]:
-                        self.log(f"SELL order CANCELED - position NOT exited!", "ERROR")
-                        return False, 0
-                except Exception as e:
-                    self.log(f"Error checking order: {e}", "WARN")
-                time.sleep(1)
+                except:
+                    pass
 
-            # Timeout - cancel and report
-            self.log(f"SELL order timeout - attempting cancel", "ERROR")
+            # Cancel unfilled order
             try:
                 self.client.cancel_order(order.order_id)
             except:
                 pass
-            return False, 0
 
+        except requests.exceptions.HTTPError as e:
+            self.log(f"Limit sell failed: {e.response.status_code} - {e.response.text}", "ERROR")
         except Exception as e:
-            self.log(f"Error in exit_position: {e}", "ERROR")
-            import traceback
-            traceback.print_exc()
-            return False, 0
+            self.log(f"Limit sell error: {e}", "ERROR")
+
+        # Try 2: Market order
+        try:
+            self.log(f"Trying MARKET SELL...", "STOP")
+            order = self.client.place_market_order(
+                ticker=ticker,
+                side=side,
+                action="sell",
+                count=contracts,
+            )
+
+            self.log(f"Market SELL placed: {order.order_id}", "STOP")
+
+            if order.filled_count > 0:
+                actual_price = order.average_fill_price or target_price
+                self.log(f"Market SELL FILLED: {order.filled_count} @ {actual_price}c", "STOP")
+                return True, actual_price
+
+            # Wait for fill
+            for _ in range(5):
+                time.sleep(1)
+                try:
+                    updated = self.client.get_order(order.order_id)
+                    if updated.filled_count >= contracts:
+                        actual_price = updated.average_fill_price or target_price
+                        self.log(f"Market SELL FILLED: {updated.filled_count} @ {actual_price}c", "STOP")
+                        return True, actual_price
+                except:
+                    pass
+
+        except requests.exceptions.HTTPError as e:
+            self.log(f"Market sell failed: {e.response.status_code} - {e.response.text}", "ERROR")
+        except Exception as e:
+            self.log(f"Market sell error: {e}", "ERROR")
+
+        self.log(f"ALL SELL ATTEMPTS FAILED - position NOT exited!", "ERROR")
+        return False, target_price  # Return target_price so loss is calculated
 
     def get_official_settlement(self, ticker: str, max_wait: int = 180, poll_interval: int = 5) -> Optional[str]:
         """
@@ -397,13 +425,24 @@ class Trader:
         slippage = trade.actual_fill_price - opportunity.entry_price
         self.log(f"ORDER FILLED at {trade.actual_fill_price}c (slip: {slippage:+d}c)", "TRADE")
 
-        # Monitor stop loss until market close
-        stopped_out, exit_price, btc_price_exit = self.monitor_stop_loss(
-            ticker=opportunity.ticker,
-            side=opportunity.side,
-            close_time=opportunity.close_time,
-            poll_interval=1.0,
-        )
+        # Monitor stop loss until market close (if enabled)
+        if self.stop_loss_enabled:
+            stopped_out, exit_price, btc_price_exit = self.monitor_stop_loss(
+                ticker=opportunity.ticker,
+                side=opportunity.side,
+                close_time=opportunity.close_time,
+                poll_interval=1.0,
+            )
+        else:
+            self.log("Stop loss DISABLED - holding to expiry", "WARN")
+            stopped_out = False
+            exit_price = 0
+            btc_price_exit = KrakenClient.get_btc_price() or 0
+            # Wait for market close
+            now = datetime.now(timezone.utc)
+            wait_seconds = (opportunity.close_time - now).total_seconds()
+            if wait_seconds > 0:
+                time.sleep(wait_seconds)
 
         if stopped_out:
             # Exit position with market order

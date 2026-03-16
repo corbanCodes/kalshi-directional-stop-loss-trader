@@ -42,6 +42,7 @@ DASHBOARD_STATE = {
     "starting_bankroll": None,
     "effective_bankroll": 0,
     "auto_compound": True,
+    "stop_loss_enabled": True,
     "today_profit": 0,
     "total_trades": 0,
     "wins": 0,
@@ -142,17 +143,20 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
             amount = data.get('amount')
             auto_compound = data.get('auto_compound', True)
+            stop_loss_enabled = data.get('stop_loss_enabled', True)
 
             if amount and amount > 0:
                 DASHBOARD_STATE["starting_bankroll"] = amount
                 DASHBOARD_STATE["effective_bankroll"] = amount
                 DASHBOARD_STATE["auto_compound"] = auto_compound
+                DASHBOARD_STATE["stop_loss_enabled"] = stop_loss_enabled
 
                 # Calculate bet info
                 calc = BetCalculator(bet_percentage=0.05, stop_loss_price=50)
                 bet = calc.calculate_bet(amount, 70)
 
-                log_activity(f"Bankroll set to ${amount:.2f}")
+                sl_status = "ON" if stop_loss_enabled else "OFF"
+                log_activity(f"Bankroll set to ${amount:.2f} (Stop Loss: {sl_status})")
 
                 self.send_json({
                     "success": True,
@@ -618,6 +622,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 <input type="checkbox" id="autoCompound" checked>
                 <label for="autoCompound">Auto-compound wins (grow bankroll after each win)</label>
             </div>
+            <div class="compound-toggle" style="margin-top:8px;">
+                <input type="checkbox" id="stopLossEnabled" checked>
+                <label for="stopLossEnabled">Stop loss at 50c <span style="color:var(--green);font-size:0.85em;">(RECOMMENDED)</span></label>
+            </div>
         </div>
 
         <!-- Status Bar -->
@@ -734,6 +742,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 // Starting - save bankroll first
                 const amount = parseFloat(document.getElementById('bankrollInput').value);
                 const autoCompound = document.getElementById('autoCompound').checked;
+                const stopLossEnabled = document.getElementById('stopLossEnabled').checked;
 
                 if (!amount || amount <= 0) {
                     alert('Enter a valid bankroll amount');
@@ -744,7 +753,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 fetch('/api/set-bankroll', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({amount, auto_compound: autoCompound})
+                    body: JSON.stringify({amount, auto_compound: autoCompound, stop_loss_enabled: stopLossEnabled})
                 }).then(r => r.json()).then(d => {
                     if (d.success) {
                         fetch('/api/start', {method: 'POST'}).then(() => {
@@ -992,6 +1001,9 @@ def cmd_run():
 
             DASHBOARD_STATE["status"] = "running"
             DASHBOARD_STATE["error"] = None
+
+            # Sync stop loss setting from dashboard
+            trader.stop_loss_enabled = DASHBOARD_STATE.get("stop_loss_enabled", True)
 
             # Run trading cycle
             profit_before = trader.state.total_profit
