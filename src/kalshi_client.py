@@ -261,17 +261,13 @@ class KalshiClient:
         action: str,
         count: int,
     ) -> OrderResponse:
-        """Place a market order (fills immediately at best price).
-
-        Per Kalshi docs: market orders are inferred when no price is specified.
-        We also use immediate_or_cancel to ensure it fills now or cancels.
-        """
+        """Place a market order (fills immediately at best price)."""
         data = {
             "ticker": ticker,
             "side": side,
             "action": action,
             "count": count,
-            "time_in_force": "immediate_or_cancel",  # Fill now or cancel
+            "type": "market",
         }
         response = self._request("POST", "/portfolio/orders", data=data)
         return OrderResponse.from_api(response)

@@ -133,16 +133,16 @@ class TradeExecutor:
         try:
             # Place the order
             client_order_id = f"strat_{trade.trade_id}_{int(time.time())}"
-            print(f"[DEBUG] Entering order placement, use_market_orders={self.use_market_orders}")
 
             if self.use_market_orders:
-                # Market order - no price specified, immediate_or_cancel
-                print(f"[DEBUG] Placing MARKET order (immediate_or_cancel) for {bet.contracts} contracts")
+                # Market order - fills immediately at best available price
+                print(f"[DEBUG] Placing MARKET order for {bet.contracts} contracts")
                 order = self.client.place_market_order(
                     ticker=opportunity.ticker,
                     side=opportunity.side,
                     action="buy",
                     count=bet.contracts,
+                    client_order_id=client_order_id,
                 )
             else:
                 # Limit order - waits for price match
@@ -203,9 +203,6 @@ class TradeExecutor:
             )
 
         except Exception as e:
-            import traceback
-            print(f"[DEBUG] Order placement EXCEPTION: {e}")
-            traceback.print_exc()
             trade.status = TradeStatus.CANCELED
             return ExecutionResult(
                 success=False,
