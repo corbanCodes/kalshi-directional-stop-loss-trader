@@ -135,8 +135,8 @@ class TradeExecutor:
             client_order_id = f"strat_{trade.trade_id}_{int(time.time())}"
 
             if self.use_market_orders:
-                # Market order - fills immediately at best available price
-                print(f"[DEBUG] Placing MARKET order for {bet.contracts} contracts")
+                # Market order - no price specified, immediate_or_cancel
+                print(f"[DEBUG] Placing MARKET order (immediate_or_cancel) for {bet.contracts} contracts")
                 order = self.client.place_market_order(
                     ticker=opportunity.ticker,
                     side=opportunity.side,
