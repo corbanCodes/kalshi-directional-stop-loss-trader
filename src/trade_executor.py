@@ -85,9 +85,11 @@ class TradeExecutor:
         self,
         client: KalshiClient,
         limit_offset: int = 1,  # cents above ask
+        use_market_orders: bool = False,  # use market orders for guaranteed fills
     ):
         self.client = client
         self.limit_offset = limit_offset
+        self.use_market_orders = use_market_orders
         self.trades: list[TradeRecord] = []
         self.pending_orders: dict[str, TradeRecord] = {}
 
@@ -132,14 +134,27 @@ class TradeExecutor:
             # Place the order
             client_order_id = f"strat_{trade.trade_id}_{int(time.time())}"
 
-            order = self.client.place_order(
-                ticker=opportunity.ticker,
-                side=opportunity.side,
-                action="buy",
-                count=bet.contracts,
-                price=limit_price,
-                client_order_id=client_order_id,
-            )
+            if self.use_market_orders:
+                # Market order - fills immediately at best available price
+                print(f"[DEBUG] Placing MARKET order for {bet.contracts} contracts")
+                order = self.client.place_market_order(
+                    ticker=opportunity.ticker,
+                    side=opportunity.side,
+                    action="buy",
+                    count=bet.contracts,
+                    client_order_id=client_order_id,
+                )
+            else:
+                # Limit order - waits for price match
+                print(f"[DEBUG] Placing LIMIT order @ {limit_price}c for {bet.contracts} contracts")
+                order = self.client.place_order(
+                    ticker=opportunity.ticker,
+                    side=opportunity.side,
+                    action="buy",
+                    count=bet.contracts,
+                    price=limit_price,
+                    client_order_id=client_order_id,
+                )
 
             trade.order_id = order.order_id
             trade.filled_contracts = order.filled_count

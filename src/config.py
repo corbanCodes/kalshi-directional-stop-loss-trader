@@ -33,6 +33,7 @@ class TradingConfig:
 
     # Order execution
     limit_order_offset: int = 1  # place limit 1c above ask
+    use_market_orders: bool = False  # True = market orders (guaranteed fill), False = limit orders
 
     # Bankroll management
     starting_bankroll: float = None  # None = use full Kalshi balance
@@ -93,6 +94,7 @@ def load_config() -> AppConfig:
         bankroll_bet_percentage=float(os.getenv("BET_PERCENTAGE", "0.05")),
         starting_bankroll=float(os.getenv("STARTING_BANKROLL")) if os.getenv("STARTING_BANKROLL") else None,
         auto_compound=os.getenv("AUTO_COMPOUND", "true").lower() == "true",
+        use_market_orders=os.getenv("USE_MARKET_ORDERS", "false").lower() == "true",
     )
 
     kalshi = KalshiConfig(

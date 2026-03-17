@@ -102,6 +102,7 @@ class Trader:
         self.executor = TradeExecutor(
             client=self.client,
             limit_offset=self.config.trading.limit_order_offset,
+            use_market_orders=self.config.trading.use_market_orders,
         )
 
         # State

@@ -44,6 +44,7 @@ DASHBOARD_STATE = {
     "auto_compound": True,
     "stop_loss_enabled": True,
     "stop_loss_price": 50,  # Default 50c
+    "use_market_orders": False,  # True = market orders (guaranteed fill), False = limit orders
     "today_profit": 0,
     "total_trades": 0,
     "wins": 0,
@@ -173,6 +174,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             auto_compound = data.get('auto_compound', True)
             stop_loss_enabled = data.get('stop_loss_enabled', True)
             stop_loss_price = data.get('stop_loss_price', 50)
+            use_market_orders = data.get('use_market_orders', False)
 
             # Validate stop loss price
             if stop_loss_price < 10 or stop_loss_price > 60:
@@ -184,6 +186,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 DASHBOARD_STATE["auto_compound"] = auto_compound
                 DASHBOARD_STATE["stop_loss_enabled"] = stop_loss_enabled
                 DASHBOARD_STATE["stop_loss_price"] = stop_loss_price
+                DASHBOARD_STATE["use_market_orders"] = use_market_orders
 
                 # Calculate bet info
                 calc = BetCalculator(bet_percentage=0.05, stop_loss_price=stop_loss_price)
@@ -663,6 +666,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 <span style="color:var(--muted);">cents</span>
                 <span style="color:var(--green);font-size:0.85em;margin-left:8px;">(RECOMMENDED: 50c)</span>
             </div>
+            <div class="compound-toggle" style="margin-top:8px;">
+                <input type="checkbox" id="useMarketOrders">
+                <label for="useMarketOrders">Use market orders</label>
+                <span style="color:var(--muted);font-size:0.85em;margin-left:8px;">(guaranteed fills, may pay slightly more)</span>
+            </div>
         </div>
 
         <!-- Status Bar -->
@@ -792,6 +800,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 const autoCompound = document.getElementById('autoCompound').checked;
                 const stopLossEnabled = document.getElementById('stopLossEnabled').checked;
                 const stopLossPrice = parseInt(document.getElementById('stopLossPrice').value) || 50;
+                const useMarketOrders = document.getElementById('useMarketOrders').checked;
 
                 if (!amount || amount <= 0) {
                     alert('Enter a valid bankroll amount');
@@ -802,7 +811,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 fetch('/api/set-bankroll', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({amount, auto_compound: autoCompound, stop_loss_enabled: stopLossEnabled, stop_loss_price: stopLossPrice})
+                    body: JSON.stringify({amount, auto_compound: autoCompound, stop_loss_enabled: stopLossEnabled, stop_loss_price: stopLossPrice, use_market_orders: useMarketOrders})
                 }).then(r => r.json()).then(d => {
                     if (d.success) {
                         fetch('/api/start', {method: 'POST'}).then(() => {
@@ -1056,9 +1065,10 @@ def cmd_run():
             DASHBOARD_STATE["status"] = "running"
             DASHBOARD_STATE["error"] = None
 
-            # Sync stop loss settings from dashboard
+            # Sync settings from dashboard
             trader.stop_loss_enabled = DASHBOARD_STATE.get("stop_loss_enabled", True)
             trader.STOP_LOSS_PRICE = DASHBOARD_STATE.get("stop_loss_price", 50)
+            trader.executor.use_market_orders = DASHBOARD_STATE.get("use_market_orders", False)
 
             # Run trading cycle
             profit_before = trader.state.total_profit
