@@ -142,7 +142,6 @@ class TradeExecutor:
                     side=opportunity.side,
                     action="buy",
                     count=bet.contracts,
-                    client_order_id=client_order_id,
                 )
             else:
                 # Limit order - waits for price match
