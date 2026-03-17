@@ -133,6 +133,7 @@ class TradeExecutor:
         try:
             # Place the order
             client_order_id = f"strat_{trade.trade_id}_{int(time.time())}"
+            print(f"[DEBUG] Entering order placement, use_market_orders={self.use_market_orders}")
 
             if self.use_market_orders:
                 # Market order - no price specified, immediate_or_cancel
@@ -202,6 +203,9 @@ class TradeExecutor:
             )
 
         except Exception as e:
+            import traceback
+            print(f"[DEBUG] Order placement EXCEPTION: {e}")
+            traceback.print_exc()
             trade.status = TradeStatus.CANCELED
             return ExecutionResult(
                 success=False,
