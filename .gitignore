@@ -1,6 +1,8 @@
 # Secrets
 *.pem
 private_key.pem
+New-safe-key
+New-safe-key.txt
 .env
 
 # Python

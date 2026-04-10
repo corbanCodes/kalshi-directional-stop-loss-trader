@@ -23,6 +23,7 @@ from .kraken import KrakenClient
 from .market_scanner import MarketScanner, TradingOpportunity
 from .bet_calculator import BetCalculator, BetCalculation
 from .trade_executor import TradeExecutor, TradeRecord, TradeStatus
+from .recovery_stages import RecoveryStagesState, RecoveryStagesCalculator
 
 
 @dataclass
@@ -129,6 +130,12 @@ class Trader:
 
         # Stop loss toggle (can be disabled from dashboard)
         self.stop_loss_enabled = True
+
+        # Recovery Stages Mode
+        self.recovery_stages_path = self.config.data_dir / "recovery_stages_state.json"
+        self.recovery_stages_state = RecoveryStagesState.load(self.recovery_stages_path)
+        self.recovery_stages_calc = RecoveryStagesCalculator()
+        self.recovery_stages_enabled = False  # Controlled by dashboard
 
         # Logging
         self.log_path = self.config.logs_dir / f"trades_{datetime.now().strftime('%Y%m%d')}.json"
@@ -676,6 +683,333 @@ class Trader:
             print(f"  If WIN: +${bet.net_profit_if_win:.2f}")
             print(f"  If STOP: -${bet.max_loss_with_stop:.2f}")
         print()
+
+    # =========================================================================
+    # RECOVERY STAGES MODE
+    # =========================================================================
+
+    def scan_recovery_opportunity(self) -> Optional[TradingOpportunity]:
+        """
+        Scan for recovery stages opportunities.
+
+        Entry criteria:
+        - Base bet: 80-92c, 5 min or less remaining
+        - Recovery bets: 87c max
+
+        Returns:
+            TradingOpportunity if found, None otherwise
+        """
+        is_recovery = self.recovery_stages_state.current_stage > 0
+
+        # Get markets
+        markets = self.scanner.get_all_crypto_markets()
+        now = datetime.now(timezone.utc)
+
+        for market in markets:
+            if market.status not in ("open", "active"):
+                continue
+
+            if market.floor_strike == 0:
+                continue
+
+            close_time = self.scanner.parse_close_time(market.close_time)
+            minutes_remaining = (close_time - now).total_seconds() / 60
+
+            # Must be within last 5 minutes
+            if minutes_remaining > 5 or minutes_remaining < 0.5:
+                continue
+
+            # Get BTC direction
+            btc_direction, btc_price = self.scanner.get_btc_direction(market.floor_strike)
+            if btc_direction is None:
+                continue
+
+            # Determine side and entry price
+            if btc_direction == "above":
+                side = "yes"
+                entry_price = market.yes_ask
+            else:
+                side = "no"
+                entry_price = market.no_ask
+
+            # Check price range based on stage
+            if is_recovery:
+                # Recovery: max 87c
+                if entry_price > RecoveryStagesCalculator.RECOVERY_MAX_PRICE:
+                    continue
+            else:
+                # Base: 80-92c
+                if entry_price < RecoveryStagesCalculator.BASE_MIN_PRICE:
+                    continue
+                if entry_price > RecoveryStagesCalculator.BASE_MAX_PRICE:
+                    continue
+
+            return TradingOpportunity(
+                ticker=market.ticker,
+                side=side,
+                entry_price=entry_price,
+                close_time=close_time,
+                minutes_remaining=minutes_remaining,
+                net_profit_per_contract=MarketScanner.calc_net_profit(entry_price),
+                return_percentage=MarketScanner.calc_return_pct(entry_price),
+                floor_strike=market.floor_strike,
+                btc_price=btc_price,
+                btc_direction=btc_direction,
+            )
+
+        return None
+
+    def run_once_recovery_stages(self, allocation: float, dashboard_state: dict = None) -> Optional[TradeResult]:
+        """
+        Run one trading cycle in Recovery Stages mode.
+
+        Args:
+            allocation: Total allocation for recovery stages
+            dashboard_state: Reference to dashboard state dict for updates
+
+        Returns:
+            TradeResult if trade was executed, None otherwise
+        """
+        if not self.can_trade():
+            return None
+
+        # Sync state from dashboard if provided
+        if dashboard_state:
+            ds = dashboard_state.get("recovery_stages_state", {})
+            self.recovery_stages_state.current_stage = ds.get("stage", 0)
+            self.recovery_stages_state.initial_loss_cents = ds.get("initial_loss_cents", 0)
+            self.recovery_stages_state.stage1_loss_cents = ds.get("stage1_loss_cents", 0)
+            self.recovery_stages_state.total_loss_cents = ds.get("total_loss_cents", 0)
+            self.recovery_stages_state.allocation_dollars = allocation
+
+        stage = self.recovery_stages_state.current_stage
+
+        # Scan for opportunity
+        opportunity = self.scan_recovery_opportunity()
+
+        if not opportunity:
+            now = time.time()
+            if now - self._last_scan_log_time >= self._scan_log_interval:
+                self._last_scan_log_time = now
+                if stage == 0:
+                    self.log(f"Recovery Stages: No base opportunity in 80-92c range")
+                else:
+                    self.log(f"Recovery Stages: No recovery opportunity at ≤87c (Stage {stage})")
+            return None
+
+        # Check if we already traded this window
+        if opportunity.ticker in self._traded_tickers:
+            return None
+
+        # Calculate bet size based on stage
+        if stage == 0:
+            # Base bet
+            result = self.recovery_stages_calc.calculate_max_base_contracts(allocation)
+            if not result.get("valid"):
+                self.log(f"Recovery Stages: Cannot calculate base bet - {result.get('error')}", "ERROR")
+                return None
+            contracts = result["base_contracts"]
+            self.recovery_stages_state.base_contracts = contracts
+        else:
+            # Recovery bet
+            loss_to_recover = self.recovery_stages_state.total_loss_cents / 100
+            recovery_result = self.recovery_stages_calc.calculate_recovery_bet(
+                loss_to_recover=loss_to_recover,
+                entry_price_cents=opportunity.entry_price,
+            )
+            if not recovery_result:
+                self.log(f"Recovery Stages: Cannot calculate Stage {stage} bet", "ERROR")
+                return None
+            contracts = recovery_result["contracts"]
+
+        # Create bet calculation manually
+        entry_price_dollars = opportunity.entry_price / 100
+        cost = contracts * entry_price_dollars
+        net_profit_per = MarketScanner.calc_net_profit(opportunity.entry_price)
+        profit_if_win = contracts * net_profit_per
+
+        bet = BetCalculation(
+            contracts=contracts,
+            cost_dollars=cost,
+            entry_price_cents=opportunity.entry_price,
+            net_profit_if_win=profit_if_win,
+            bankroll_percentage=cost / allocation * 100 if allocation > 0 else 0,
+            max_loss_with_stop=cost,  # No stop loss in recovery mode
+        )
+
+        # Verify we can afford with real balance
+        if bet.cost_dollars > self.state.bankroll:
+            self.log(f"Recovery Stages: Bet cost ${bet.cost_dollars:.2f} exceeds balance ${self.state.bankroll:.2f}", "ERROR")
+            return None
+
+        # Mark ticker as traded
+        self._traded_tickers.add(opportunity.ticker)
+        self.log(f"Marked {opportunity.ticker} as traded (no re-entry)", "DEBUG")
+
+        # Log the trade
+        stage_name = ["BASE", "STAGE 1", "STAGE 2"][stage]
+        self.log("=" * 60, "TRADE")
+        self.log(f"RECOVERY STAGES: {stage_name} BET", "TRADE")
+        self.log(f"  Ticker: {opportunity.ticker}", "TRADE")
+        self.log(f"  Side: {opportunity.side.upper()}", "TRADE")
+        self.log(f"  Entry price: {opportunity.entry_price}c", "TRADE")
+        self.log(f"  Contracts: {contracts}", "TRADE")
+        self.log(f"  Cost: ${bet.cost_dollars:.2f}", "TRADE")
+        if stage > 0:
+            self.log(f"  Recovering: ${self.recovery_stages_state.total_loss_cents / 100:.2f}", "TRADE")
+
+        # Execute trade (NO STOP LOSS)
+        result = self.executor.execute_opportunity(opportunity, bet)
+
+        if not result.success:
+            self.log(f"ORDER FAILED: {result.error}", "ERROR")
+            return None
+
+        trade = result.trade
+        self.log(f"Waiting for fill...", "DEBUG")
+        trade = self.executor.wait_for_fill(trade.order_id, timeout_seconds=30)
+
+        if trade.status == TradeStatus.UNFILLED:
+            self.log(f"Order not filled - canceled", "WARN")
+            return None
+
+        slippage = trade.actual_fill_price - opportunity.entry_price
+        self.log(f"ORDER FILLED at {trade.actual_fill_price}c (slip: {slippage:+d}c)", "TRADE")
+
+        # Wait for settlement (NO STOP LOSS MONITORING)
+        self.log("Holding to expiry (no stop loss in recovery mode)...", "INFO")
+
+        now = datetime.now(timezone.utc)
+        wait_seconds = (opportunity.close_time - now).total_seconds()
+        if wait_seconds > 0:
+            time.sleep(wait_seconds)
+
+        # Get settlement result
+        result = self.get_official_settlement(opportunity.ticker, max_wait=180)
+
+        if not result:
+            self.log("Settlement timeout - checking bankroll", "WARN")
+            old_bankroll = self.state.bankroll
+            self.refresh_bankroll()
+            delta = self.state.bankroll - old_bankroll
+            result = opportunity.side if delta > 0 else ("no" if opportunity.side == "yes" else "yes")
+
+        won = (opportunity.side == result)
+        btc_price_exit = KrakenClient.get_btc_price() or 0
+
+        # Calculate actual cost with fill price
+        actual_cost_cents = trade.filled_contracts * trade.actual_fill_price
+        actual_cost_dollars = actual_cost_cents / 100
+        fee = MarketScanner.calc_fee(trade.actual_fill_price) * trade.filled_contracts
+
+        if won:
+            # WIN - Reset to base and auto-compound
+            actual_profit = trade.filled_contracts * MarketScanner.calc_net_profit(trade.actual_fill_price)
+            self.log("=" * 60, "WIN")
+            self.log(f"RECOVERY STAGES {stage_name} WON!", "WIN")
+            self.log(f"  Profit: +${actual_profit:.2f}", "WIN")
+
+            if stage > 0:
+                recovered = self.recovery_stages_state.total_loss_cents / 100
+                net_gain = actual_profit - recovered
+                self.log(f"  Recovered: ${recovered:.2f}", "WIN")
+                self.log(f"  Net gain: +${net_gain:.2f}", "WIN")
+
+            # Update stats
+            self.state.total_wins += 1
+            self.state.total_profit += actual_profit
+            self.effective_bankroll += actual_profit
+
+            # Auto-compound: add profit to allocation
+            if dashboard_state:
+                new_allocation = allocation + actual_profit
+                dashboard_state["recovery_stages_allocation"] = new_allocation
+                self.log(f"  Allocation: ${allocation:.2f} -> ${new_allocation:.2f}", "WIN")
+
+            # Reset state
+            self.recovery_stages_state.reset_to_base()
+            self.recovery_stages_state.save(self.recovery_stages_path)
+
+            if dashboard_state:
+                dashboard_state["recovery_stages_state"] = {
+                    "stage": 0,
+                    "initial_loss_cents": 0,
+                    "stage1_loss_cents": 0,
+                    "total_loss_cents": 0,
+                }
+
+            profit = actual_profit
+
+        else:
+            # LOSS - Advance stage or reset
+            loss_cents = actual_cost_cents + int(fee * 100)
+            loss_dollars = loss_cents / 100
+
+            self.log("=" * 60, "LOSS")
+            self.log(f"RECOVERY STAGES {stage_name} LOST", "LOSS")
+            self.log(f"  Loss: -${loss_dollars:.2f}", "LOSS")
+
+            if stage == 0:
+                # Base lost -> Stage 1
+                self.recovery_stages_state.advance_to_stage1(loss_cents)
+                self.log(f"  -> Advancing to STAGE 1", "LOSS")
+            elif stage == 1:
+                # Stage 1 lost -> Stage 2
+                self.recovery_stages_state.advance_to_stage2(loss_cents)
+                total_loss = self.recovery_stages_state.total_loss_cents / 100
+                self.log(f"  -> Advancing to STAGE 2 (total loss: ${total_loss:.2f})", "LOSS")
+            else:
+                # Stage 2 lost -> Give up, reset
+                total_loss = (self.recovery_stages_state.total_loss_cents + loss_cents) / 100
+                self.log(f"  -> STAGE 2 FAILED - giving up", "LOSS")
+                self.log(f"  -> Total loss: -${total_loss:.2f}", "LOSS")
+
+                # Reduce allocation by total loss
+                if dashboard_state:
+                    new_allocation = max(0, allocation - total_loss)
+                    dashboard_state["recovery_stages_allocation"] = new_allocation
+                    self.log(f"  Allocation: ${allocation:.2f} -> ${new_allocation:.2f}", "LOSS")
+
+                self.recovery_stages_state.reset_to_base()
+
+            self.recovery_stages_state.save(self.recovery_stages_path)
+
+            if dashboard_state:
+                dashboard_state["recovery_stages_state"] = {
+                    "stage": self.recovery_stages_state.current_stage,
+                    "initial_loss_cents": self.recovery_stages_state.initial_loss_cents,
+                    "stage1_loss_cents": self.recovery_stages_state.stage1_loss_cents,
+                    "total_loss_cents": self.recovery_stages_state.total_loss_cents,
+                }
+
+            # Update stats
+            self.state.total_losses += 1
+            self.state.total_profit -= loss_dollars
+            self.effective_bankroll -= loss_dollars
+            profit = -loss_dollars
+
+        self.state.total_trades += 1
+        self.state.last_trade_time = datetime.now(timezone.utc).isoformat()
+        self.state.save(self.state_path)
+
+        trade_result = TradeResult(
+            ticker=opportunity.ticker,
+            side=opportunity.side,
+            contracts=trade.filled_contracts,
+            entry_price=opportunity.entry_price,
+            fill_price=trade.actual_fill_price,
+            exit_price=None,
+            cost=actual_cost_dollars,
+            profit=profit,
+            won=won,
+            stopped_out=False,
+            btc_price_entry=opportunity.btc_price,
+            btc_price_exit=btc_price_exit,
+            floor_strike=opportunity.floor_strike,
+        )
+
+        self.trade_history.append(trade_result)
+        return trade_result
 
     def get_trade_history(self) -> list[TradeResult]:
         """Get trade history."""

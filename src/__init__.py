@@ -11,6 +11,7 @@ from .market_scanner import MarketScanner, TradingOpportunity
 from .bet_calculator import BetCalculator, BetCalculation, MartingaleCalculator
 from .trade_executor import TradeExecutor, TradeRecord, TradeStatus
 from .trader import Trader, TradingState
+from .recovery_stages import RecoveryStagesState, RecoveryStagesCalculator
 
 __all__ = [
     "AppConfig",
@@ -33,4 +34,6 @@ __all__ = [
     "TradeStatus",
     "Trader",
     "TradingState",
+    "RecoveryStagesState",
+    "RecoveryStagesCalculator",
 ]

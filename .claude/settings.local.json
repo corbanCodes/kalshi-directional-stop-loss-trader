@@ -3,7 +3,14 @@
     "allow": [
       "Bash(python3:*)",
       "WebSearch",
-      "WebFetch(domain:docs.kalshi.com)"
+      "WebFetch(domain:docs.kalshi.com)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nRemove private key from tracking and add .gitignore\n\nIMPORTANT: Key was exposed - rotate it on Kalshi immediately\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push)",
+      "Bash(git checkout:*)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

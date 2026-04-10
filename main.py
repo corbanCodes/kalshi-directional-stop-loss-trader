@@ -28,7 +28,7 @@ DASHBOARD_PASS = os.environ.get("DASHBOARD_PASS", "")
 # Add src to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src import Trader, load_config, KalshiClient, MarketScanner, BetCalculator
+from src import Trader, load_config, KalshiClient, MarketScanner, BetCalculator, RecoveryStagesCalculator, RecoveryStagesState
 from src.kraken import KrakenClient
 
 # Global trader reference
@@ -59,6 +59,16 @@ DASHBOARD_STATE = {
     "market_prices": {},
     "btc_price": 0,
     "pending_trade": None,
+    # Recovery Stages Mode
+    "recovery_stages_enabled": False,
+    "recovery_stages_allocation": None,
+    "recovery_stages_state": {
+        "stage": 0,  # 0=base, 1=stage1, 2=stage2
+        "initial_loss_cents": 0,
+        "stage1_loss_cents": 0,
+        "total_loss_cents": 0,
+    },
+    "recovery_stages_math": None,  # Calculated bet sizing info
 }
 
 
@@ -136,6 +146,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.handle_set_bankroll()
         elif self.path == "/api/reset-stats":
             self.handle_reset_stats()
+        elif self.path == "/api/set-recovery-stages":
+            self.handle_set_recovery_stages()
         else:
             self.send_error(404)
 
@@ -163,6 +175,77 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         log_activity("Stats RESET")
         self.send_json({"success": True})
+
+    def handle_set_recovery_stages(self):
+        """Handle enabling/disabling recovery stages mode."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            data = json.loads(body) if body else {}
+
+            enabled = data.get('enabled', False)
+            allocation = data.get('allocation', 0)
+
+            if enabled:
+                if not allocation or allocation <= 0:
+                    self.send_json({"success": False, "error": "Invalid allocation"})
+                    return
+
+                # Calculate bet sizing
+                calc = RecoveryStagesCalculator()
+                result = calc.validate_allocation(allocation)
+
+                if not result.get("valid"):
+                    self.send_json({
+                        "success": False,
+                        "error": result.get("error", "Allocation too small")
+                    })
+                    return
+
+                # Update dashboard state
+                DASHBOARD_STATE["recovery_stages_enabled"] = True
+                DASHBOARD_STATE["recovery_stages_allocation"] = allocation
+                DASHBOARD_STATE["recovery_stages_math"] = result
+                DASHBOARD_STATE["recovery_stages_state"] = {
+                    "stage": 0,
+                    "initial_loss_cents": 0,
+                    "stage1_loss_cents": 0,
+                    "total_loss_cents": 0,
+                }
+
+                # When recovery stages enabled, force settings
+                DASHBOARD_STATE["auto_compound"] = True  # Always on
+                DASHBOARD_STATE["stop_loss_enabled"] = False  # Always off
+
+                log_activity(f"Recovery Stages ENABLED: ${allocation:.2f} allocation, {result['base_contracts']} base contracts")
+
+                self.send_json({
+                    "success": True,
+                    "base_contracts": result["base_contracts"],
+                    "stage1_contracts": result["stage1_contracts"],
+                    "stage2_contracts": result["stage2_contracts"],
+                    "base_cost": result["base_cost"],
+                    "stage1_cost": result["stage1_cost"],
+                    "stage2_cost": result["stage2_cost"],
+                    "total_risk": result["total_risk"],
+                    "valid": True,
+                })
+            else:
+                # Disable recovery stages
+                DASHBOARD_STATE["recovery_stages_enabled"] = False
+                DASHBOARD_STATE["recovery_stages_allocation"] = None
+                DASHBOARD_STATE["recovery_stages_math"] = None
+                DASHBOARD_STATE["recovery_stages_state"] = {
+                    "stage": 0,
+                    "initial_loss_cents": 0,
+                    "stage1_loss_cents": 0,
+                    "total_loss_cents": 0,
+                }
+                log_activity("Recovery Stages DISABLED")
+                self.send_json({"success": True})
+
+        except Exception as e:
+            self.send_json({"success": False, "error": str(e)})
 
     def handle_set_bankroll(self):
         try:
@@ -671,6 +754,52 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 <label for="useMarketOrders">Use market orders</label>
                 <span style="color:var(--muted);font-size:0.85em;margin-left:8px;">(guaranteed fills, may pay slightly more)</span>
             </div>
+
+            <!-- Recovery Stages Mode -->
+            <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border);">
+                <div class="compound-toggle" style="margin-top:0;">
+                    <input type="checkbox" id="recoveryStagesEnabled" onchange="toggleRecoveryStages()">
+                    <label for="recoveryStagesEnabled" style="font-weight:600;color:var(--purple);">Enable Recovery Stages Mode</label>
+                    <span style="color:var(--muted);font-size:0.85em;margin-left:8px;">(2-stage recovery, no stop-loss)</span>
+                </div>
+
+                <div id="recoveryStagesPanel" style="display:none;margin-top:15px;padding:15px;background:rgba(168,85,247,0.1);border:1px solid var(--purple);border-radius:12px;">
+                    <div style="display:flex;align-items:center;gap:15px;margin-bottom:15px;">
+                        <label style="color:var(--muted);font-size:0.85em;">Allocation:</label>
+                        <span style="color:var(--muted);">$</span>
+                        <input type="number" id="recoveryAllocation" value="50" min="10" step="5"
+                            style="width:100px;padding:8px 12px;font-size:1rem;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:var(--text);"
+                            oninput="updateRecoveryMath()">
+                        <button onclick="applyRecoveryStages()" style="padding:8px 16px;background:var(--purple);border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:600;">Apply</button>
+                    </div>
+
+                    <div id="recoveryMathDisplay" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center;font-size:0.85em;">
+                        <div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:8px;">
+                            <div style="color:var(--green);font-weight:700;" id="rmBase">-</div>
+                            <div style="color:var(--muted);font-size:0.75em;">Base Bet</div>
+                        </div>
+                        <div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:8px;">
+                            <div style="color:var(--yellow);font-weight:700;" id="rmStage1">-</div>
+                            <div style="color:var(--muted);font-size:0.75em;">Stage 1</div>
+                        </div>
+                        <div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:8px;">
+                            <div style="color:var(--red);font-weight:700;" id="rmStage2">-</div>
+                            <div style="color:var(--muted);font-size:0.75em;">Stage 2</div>
+                        </div>
+                        <div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:8px;">
+                            <div style="font-weight:700;" id="rmTotal">-</div>
+                            <div style="color:var(--muted);font-size:0.75em;">Total Risk</div>
+                        </div>
+                    </div>
+                    <div id="recoveryValidation" style="margin-top:10px;text-align:center;font-size:0.85em;"></div>
+                </div>
+
+                <div id="recoveryStageIndicator" style="display:none;margin-top:15px;padding:10px 15px;background:rgba(168,85,247,0.15);border-radius:8px;text-align:center;">
+                    <span style="color:var(--muted);">Current Stage:</span>
+                    <span id="currentStageLabel" style="font-weight:700;margin-left:8px;color:var(--purple);">BASE</span>
+                    <span id="stageLossInfo" style="margin-left:15px;color:var(--muted);font-size:0.85em;"></span>
+                </div>
+            </div>
         </div>
 
         <!-- Status Bar -->
@@ -869,10 +998,21 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 document.getElementById('winRate').textContent = total > 0 ? (wins/total*100).toFixed(0) + '%' : '0%';
                 document.getElementById('tradeCount').textContent = total;
 
-                // Stop loss display
-                const slPrice = data.stop_loss_price || 50;
-                const slEnabled = data.stop_loss_enabled !== false;
-                document.getElementById('ruleStopLoss').textContent = slEnabled ? slPrice + 'c' : 'OFF';
+                // Stop loss display (changes based on recovery stages mode)
+                if (data.recovery_stages_enabled) {
+                    document.getElementById('ruleStopLoss').textContent = 'OFF (Recovery)';
+                    document.getElementById('ruleStopLoss').style.color = 'var(--purple)';
+                } else {
+                    const slPrice = data.stop_loss_price || 50;
+                    const slEnabled = data.stop_loss_enabled !== false;
+                    document.getElementById('ruleStopLoss').textContent = slEnabled ? slPrice + 'c' : 'OFF';
+                    document.getElementById('ruleStopLoss').style.color = '';
+                }
+
+                // Update effective bankroll - use recovery allocation if in recovery mode
+                if (data.recovery_stages_enabled && data.recovery_stages_allocation) {
+                    document.getElementById('effectiveBankroll').textContent = '$' + data.recovery_stages_allocation.toFixed(2);
+                }
 
                 // Markets
                 const markets = data.market_prices || {};
@@ -937,6 +1077,137 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
                 // Update time
                 document.getElementById('lastUpdate').textContent = data.last_update || '--';
+
+                // Recovery stages state
+                if (data.recovery_stages_enabled) {
+                    const indicator = document.getElementById('recoveryStageIndicator');
+                    indicator.style.display = 'block';
+                    const stage = data.recovery_stages_state?.stage || 0;
+                    const stageLabels = {0: 'BASE', 1: 'STAGE 1', 2: 'STAGE 2'};
+                    const stageColors = {0: 'var(--green)', 1: 'var(--yellow)', 2: 'var(--red)'};
+                    document.getElementById('currentStageLabel').textContent = stageLabels[stage] || 'BASE';
+                    document.getElementById('currentStageLabel').style.color = stageColors[stage] || 'var(--purple)';
+
+                    const totalLoss = data.recovery_stages_state?.total_loss_cents || 0;
+                    if (totalLoss > 0) {
+                        document.getElementById('stageLossInfo').textContent = 'Recovering: $' + (totalLoss / 100).toFixed(2);
+                    } else {
+                        document.getElementById('stageLossInfo').textContent = '';
+                    }
+                }
+            });
+        }
+
+        // Recovery Stages functions
+        function toggleRecoveryStages() {
+            const enabled = document.getElementById('recoveryStagesEnabled').checked;
+            const panel = document.getElementById('recoveryStagesPanel');
+            const indicator = document.getElementById('recoveryStageIndicator');
+
+            panel.style.display = enabled ? 'block' : 'none';
+
+            if (enabled) {
+                // Grey out conflicting options
+                document.getElementById('autoCompound').disabled = true;
+                document.getElementById('autoCompound').checked = true;
+                document.getElementById('stopLossEnabled').disabled = true;
+                document.getElementById('stopLossEnabled').checked = false;
+                document.getElementById('stopLossPrice').disabled = true;
+
+                updateRecoveryMath();
+            } else {
+                // Re-enable options
+                document.getElementById('autoCompound').disabled = false;
+                document.getElementById('stopLossEnabled').disabled = false;
+                document.getElementById('stopLossPrice').disabled = false;
+                indicator.style.display = 'none';
+
+                // Disable recovery stages on server
+                fetch('/api/set-recovery-stages', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({enabled: false})
+                });
+            }
+        }
+
+        function updateRecoveryMath() {
+            const allocation = parseFloat(document.getElementById('recoveryAllocation').value) || 0;
+
+            // Client-side estimate (server will validate)
+            const worstFill = 88; // 87c + 1c slippage
+            const netProfit = (100 - worstFill) / 100 - 0.01; // ~$0.11
+            const costPerContract = worstFill / 100;
+
+            // Calculate max base that fits in allocation
+            let base = 0, s1 = 0, s2 = 0, total = 0;
+            let valid = false;
+
+            for (let b = 1; b <= 100; b++) {
+                const baseCost = b * costPerContract;
+                const baseLoss = baseCost + b * 0.01;
+                const s1c = Math.ceil(baseLoss * 1.05 / netProfit);
+                const s1Cost = s1c * costPerContract;
+                const s1Loss = s1Cost + s1c * 0.01;
+                const s2c = Math.ceil((baseLoss + s1Loss) * 1.05 / netProfit);
+                const s2Cost = s2c * costPerContract;
+                const totalRisk = baseCost + s1Cost + s2Cost;
+
+                if (totalRisk <= allocation) {
+                    base = b;
+                    s1 = s1c;
+                    s2 = s2c;
+                    total = totalRisk;
+                    valid = true;
+                } else {
+                    break;
+                }
+            }
+
+            document.getElementById('rmBase').textContent = base > 0 ? base + ' @ $' + (base * costPerContract).toFixed(2) : '-';
+            document.getElementById('rmStage1').textContent = s1 > 0 ? s1 + ' @ $' + (s1 * costPerContract).toFixed(2) : '-';
+            document.getElementById('rmStage2').textContent = s2 > 0 ? s2 + ' @ $' + (s2 * costPerContract).toFixed(2) : '-';
+            document.getElementById('rmTotal').textContent = total > 0 ? '$' + total.toFixed(2) : '-';
+            document.getElementById('rmTotal').style.color = valid ? 'var(--green)' : 'var(--red)';
+
+            const validEl = document.getElementById('recoveryValidation');
+            if (valid) {
+                validEl.innerHTML = '<span style="color:var(--green);">Both recovery stages can be funded</span>';
+            } else if (allocation > 0) {
+                validEl.innerHTML = '<span style="color:var(--red);">Allocation too small - minimum ~$' + (3 * costPerContract * 1.1).toFixed(2) + ' needed</span>';
+            } else {
+                validEl.innerHTML = '';
+            }
+        }
+
+        function applyRecoveryStages() {
+            const allocation = parseFloat(document.getElementById('recoveryAllocation').value) || 0;
+
+            if (allocation <= 0) {
+                alert('Enter a valid allocation amount');
+                return;
+            }
+
+            fetch('/api/set-recovery-stages', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({enabled: true, allocation: allocation})
+            }).then(r => r.json()).then(data => {
+                if (data.success) {
+                    document.getElementById('recoveryStageIndicator').style.display = 'block';
+                    document.getElementById('currentStageLabel').textContent = 'BASE';
+                    document.getElementById('stageLossInfo').textContent = '';
+
+                    // Update display with server values
+                    document.getElementById('rmBase').textContent = data.base_contracts + ' @ $' + data.base_cost.toFixed(2);
+                    document.getElementById('rmStage1').textContent = data.stage1_contracts + ' @ $' + data.stage1_cost.toFixed(2);
+                    document.getElementById('rmStage2').textContent = data.stage2_contracts + ' @ $' + data.stage2_cost.toFixed(2);
+                    document.getElementById('rmTotal').textContent = '$' + data.total_risk.toFixed(2);
+                    document.getElementById('rmTotal').style.color = 'var(--green)';
+                    document.getElementById('recoveryValidation').innerHTML = '<span style="color:var(--green);">Recovery Stages ACTIVE</span>';
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
             });
         }
 
@@ -1070,9 +1341,16 @@ def cmd_run():
             trader.STOP_LOSS_PRICE = DASHBOARD_STATE.get("stop_loss_price", 50)
             trader.executor.use_market_orders = DASHBOARD_STATE.get("use_market_orders", False)
 
-            # Run trading cycle
+            # Run trading cycle - choose mode based on recovery stages setting
             profit_before = trader.state.total_profit
-            result = trader.run_once()
+
+            if DASHBOARD_STATE.get("recovery_stages_enabled"):
+                # Recovery Stages Mode
+                allocation = DASHBOARD_STATE.get("recovery_stages_allocation", 0)
+                result = trader.run_once_recovery_stages(allocation, DASHBOARD_STATE)
+            else:
+                # Standard Mode
+                result = trader.run_once()
 
             if result:
                 trade_profit = trader.state.total_profit - profit_before
