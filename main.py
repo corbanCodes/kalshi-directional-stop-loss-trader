@@ -924,32 +924,62 @@ class DashboardHandler(BaseHTTPRequestHandler):
             const isActive = btn.classList.contains('active');
 
             if (!isActive) {
-                // Starting - save bankroll first
-                const amount = parseFloat(document.getElementById('bankrollInput').value);
-                const autoCompound = document.getElementById('autoCompound').checked;
-                const stopLossEnabled = document.getElementById('stopLossEnabled').checked;
-                const stopLossPrice = parseInt(document.getElementById('stopLossPrice').value) || 50;
-                const useMarketOrders = document.getElementById('useMarketOrders').checked;
+                // Starting - check if recovery stages mode is enabled
+                const recoveryEnabled = document.getElementById('recoveryStagesEnabled').checked;
 
-                if (!amount || amount <= 0) {
-                    alert('Enter a valid bankroll amount');
-                    return;
-                }
-
-                // Save bankroll then start
-                fetch('/api/set-bankroll', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({amount, auto_compound: autoCompound, stop_loss_enabled: stopLossEnabled, stop_loss_price: stopLossPrice, use_market_orders: useMarketOrders})
-                }).then(r => r.json()).then(d => {
-                    if (d.success) {
-                        fetch('/api/start', {method: 'POST'}).then(() => {
-                            btn.textContent = 'STOP';
-                            btn.classList.add('active');
-                            updateUI();
-                        });
+                if (recoveryEnabled) {
+                    // Recovery Stages Mode - apply settings first
+                    const allocation = parseFloat(document.getElementById('recoveryAllocation').value) || 0;
+                    if (allocation <= 0) {
+                        alert('Enter a valid allocation amount for Recovery Stages');
+                        return;
                     }
-                });
+
+                    fetch('/api/set-recovery-stages', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({enabled: true, allocation: allocation})
+                    }).then(r => r.json()).then(data => {
+                        if (data.success) {
+                            // Now start trading
+                            fetch('/api/start', {method: 'POST'}).then(() => {
+                                btn.textContent = 'STOP';
+                                btn.classList.add('active');
+                                document.getElementById('recoveryStageIndicator').style.display = 'block';
+                                updateUI();
+                            });
+                        } else {
+                            alert('Recovery Stages Error: ' + (data.error || 'Unknown error'));
+                        }
+                    });
+                } else {
+                    // Standard Mode - save bankroll first
+                    const amount = parseFloat(document.getElementById('bankrollInput').value);
+                    const autoCompound = document.getElementById('autoCompound').checked;
+                    const stopLossEnabled = document.getElementById('stopLossEnabled').checked;
+                    const stopLossPrice = parseInt(document.getElementById('stopLossPrice').value) || 50;
+                    const useMarketOrders = document.getElementById('useMarketOrders').checked;
+
+                    if (!amount || amount <= 0) {
+                        alert('Enter a valid bankroll amount');
+                        return;
+                    }
+
+                    // Save bankroll then start
+                    fetch('/api/set-bankroll', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({amount, auto_compound: autoCompound, stop_loss_enabled: stopLossEnabled, stop_loss_price: stopLossPrice, use_market_orders: useMarketOrders})
+                    }).then(r => r.json()).then(d => {
+                        if (d.success) {
+                            fetch('/api/start', {method: 'POST'}).then(() => {
+                                btn.textContent = 'STOP';
+                                btn.classList.add('active');
+                                updateUI();
+                            });
+                        }
+                    });
+                }
             } else {
                 // Stopping
                 fetch('/api/stop', {method: 'POST'}).then(() => {
@@ -1347,7 +1377,11 @@ def cmd_run():
             if DASHBOARD_STATE.get("recovery_stages_enabled"):
                 # Recovery Stages Mode
                 allocation = DASHBOARD_STATE.get("recovery_stages_allocation", 0)
-                result = trader.run_once_recovery_stages(allocation, DASHBOARD_STATE)
+                if allocation > 0:
+                    result = trader.run_once_recovery_stages(allocation, DASHBOARD_STATE)
+                else:
+                    log_activity("Recovery Stages: No allocation set!")
+                    result = None
             else:
                 # Standard Mode
                 result = trader.run_once()

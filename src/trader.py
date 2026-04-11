@@ -734,7 +734,9 @@ class Trader:
 
             # Check price range based on stage
             if is_recovery:
-                # Recovery: max 87c
+                # Recovery: 80-87c (capped at 87c)
+                if entry_price < RecoveryStagesCalculator.BASE_MIN_PRICE:
+                    continue
                 if entry_price > RecoveryStagesCalculator.RECOVERY_MAX_PRICE:
                     continue
             else:
@@ -773,6 +775,11 @@ class Trader:
         if not self.can_trade():
             return None
 
+        # Debug: confirm we're in recovery stages mode
+        if not hasattr(self, '_recovery_mode_logged'):
+            self.log(f"Recovery Stages Mode ACTIVE - Allocation: ${allocation:.2f}", "INFO")
+            self._recovery_mode_logged = True
+
         # Sync state from dashboard if provided
         if dashboard_state:
             ds = dashboard_state.get("recovery_stages_state", {})
@@ -792,9 +799,9 @@ class Trader:
             if now - self._last_scan_log_time >= self._scan_log_interval:
                 self._last_scan_log_time = now
                 if stage == 0:
-                    self.log(f"Recovery Stages: No base opportunity in 80-92c range")
+                    self.log(f"Recovery Stages [BASE]: Scanning 80-92c range, 5min window")
                 else:
-                    self.log(f"Recovery Stages: No recovery opportunity at ≤87c (Stage {stage})")
+                    self.log(f"Recovery Stages [STAGE {stage}]: Scanning 80-87c range, 5min window")
             return None
 
         # Check if we already traded this window
