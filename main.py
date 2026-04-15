@@ -69,6 +69,7 @@ DASHBOARD_STATE = {
         "total_loss_cents": 0,
     },
     "recovery_stages_math": None,  # Calculated bet sizing info
+    "use_full_bankroll": False,  # Auto-use 90% of Kalshi balance
 }
 
 
@@ -185,6 +186,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
             enabled = data.get('enabled', False)
             allocation = data.get('allocation', 0)
+            use_full_bankroll = data.get('use_full_bankroll', False)
 
             if enabled:
                 if not allocation or allocation <= 0:
@@ -206,6 +208,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 DASHBOARD_STATE["recovery_stages_enabled"] = True
                 DASHBOARD_STATE["recovery_stages_allocation"] = allocation
                 DASHBOARD_STATE["recovery_stages_math"] = result
+                DASHBOARD_STATE["use_full_bankroll"] = use_full_bankroll
                 DASHBOARD_STATE["recovery_stages_state"] = {
                     "stage": 0,
                     "initial_loss_cents": 0,
@@ -217,7 +220,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 DASHBOARD_STATE["auto_compound"] = True  # Always on
                 DASHBOARD_STATE["stop_loss_enabled"] = False  # Always off
 
-                log_activity(f"Recovery Stages ENABLED: ${allocation:.2f} allocation, {result['base_contracts']} base contracts")
+                mode_note = " [AUTO 90%]" if use_full_bankroll else ""
+                log_activity(f"Recovery Stages ENABLED: ${allocation:.2f} allocation, {result['base_contracts']} base contracts{mode_note}")
 
                 self.send_json({
                     "success": True,
@@ -235,6 +239,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 DASHBOARD_STATE["recovery_stages_enabled"] = False
                 DASHBOARD_STATE["recovery_stages_allocation"] = None
                 DASHBOARD_STATE["recovery_stages_math"] = None
+                DASHBOARD_STATE["use_full_bankroll"] = False
                 DASHBOARD_STATE["recovery_stages_state"] = {
                     "stage": 0,
                     "initial_loss_cents": 0,
@@ -764,12 +769,16 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 </div>
 
                 <div id="recoveryStagesPanel" style="display:none;margin-top:15px;padding:15px;background:rgba(168,85,247,0.1);border:1px solid var(--purple);border-radius:12px;">
-                    <div style="display:flex;align-items:center;gap:15px;margin-bottom:15px;">
+                    <div style="display:flex;align-items:center;gap:15px;margin-bottom:15px;flex-wrap:wrap;">
                         <label style="color:var(--muted);font-size:0.85em;">Allocation:</label>
                         <span style="color:var(--muted);">$</span>
                         <input type="number" id="recoveryAllocation" value="50" min="10" step="5"
                             style="width:100px;padding:8px 12px;font-size:1rem;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:var(--text);"
                             oninput="updateRecoveryMath()">
+                        <div style="display:flex;align-items:center;gap:6px;margin-left:10px;">
+                            <input type="checkbox" id="useFullBankroll" onchange="toggleFullBankroll()" style="width:16px;height:16px;accent-color:var(--purple);">
+                            <label for="useFullBankroll" style="color:var(--muted);font-size:0.85em;cursor:pointer;">Use full Kalshi bankroll (90%)</label>
+                        </div>
                         <button onclick="applyRecoveryStages()" style="padding:8px 16px;background:var(--purple);border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:600;">Apply</button>
                     </div>
 
@@ -930,6 +939,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 if (recoveryEnabled) {
                     // Recovery Stages Mode - apply settings first
                     const allocation = parseFloat(document.getElementById('recoveryAllocation').value) || 0;
+                    const useFullBankroll = document.getElementById('useFullBankroll').checked;
                     if (allocation <= 0) {
                         alert('Enter a valid allocation amount for Recovery Stages');
                         return;
@@ -938,7 +948,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     fetch('/api/set-recovery-stages', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({enabled: true, allocation: allocation})
+                        body: JSON.stringify({enabled: true, allocation: allocation, use_full_bankroll: useFullBankroll})
                     }).then(r => r.json()).then(data => {
                         if (data.success) {
                             // Now start trading
@@ -1011,6 +1021,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
                 // Balances
                 document.getElementById('kalshiBalance').textContent = '$' + (data.bankroll || 0).toFixed(2);
+
+                // Auto-sync recovery allocation if using full bankroll
+                if (document.getElementById('useFullBankroll').checked) {
+                    const balance = data.bankroll || 0;
+                    const allocation = Math.floor(balance * 0.90 * 100) / 100;
+                    const allocationInput = document.getElementById('recoveryAllocation');
+                    if (parseFloat(allocationInput.value).toFixed(2) !== allocation.toFixed(2)) {
+                        allocationInput.value = allocation.toFixed(2);
+                        updateRecoveryMath();
+                    }
+                }
 
                 const effective = data.effective_bankroll || data.starting_bankroll || 0;
                 document.getElementById('effectiveBankroll').textContent = '$' + effective.toFixed(2);
@@ -1129,6 +1150,24 @@ class DashboardHandler(BaseHTTPRequestHandler):
         }
 
         // Recovery Stages functions
+        function toggleFullBankroll() {
+            const checked = document.getElementById('useFullBankroll').checked;
+            const allocationInput = document.getElementById('recoveryAllocation');
+
+            if (checked) {
+                // Get current Kalshi balance from UI and apply 90% (10% safety buffer)
+                const balanceText = document.getElementById('kalshiBalance').textContent;
+                const balance = parseFloat(balanceText.replace('$', '').replace(',', '')) || 0;
+                const allocation = Math.floor(balance * 0.90 * 100) / 100;  // Round down to cents
+
+                allocationInput.value = allocation.toFixed(2);
+                allocationInput.disabled = true;
+                updateRecoveryMath();
+            } else {
+                allocationInput.disabled = false;
+            }
+        }
+
         function toggleRecoveryStages() {
             const enabled = document.getElementById('recoveryStagesEnabled').checked;
             const panel = document.getElementById('recoveryStagesPanel');
@@ -1212,6 +1251,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         function applyRecoveryStages() {
             const allocation = parseFloat(document.getElementById('recoveryAllocation').value) || 0;
+            const useFullBankroll = document.getElementById('useFullBankroll').checked;
 
             if (allocation <= 0) {
                 alert('Enter a valid allocation amount');
@@ -1221,7 +1261,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             fetch('/api/set-recovery-stages', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({enabled: true, allocation: allocation})
+                body: JSON.stringify({enabled: true, allocation: allocation, use_full_bankroll: useFullBankroll})
             }).then(r => r.json()).then(data => {
                 if (data.success) {
                     document.getElementById('recoveryStageIndicator').style.display = 'block';
@@ -1376,7 +1416,13 @@ def cmd_run():
 
             if DASHBOARD_STATE.get("recovery_stages_enabled"):
                 # Recovery Stages Mode
-                allocation = DASHBOARD_STATE.get("recovery_stages_allocation", 0)
+                if DASHBOARD_STATE.get("use_full_bankroll"):
+                    # Auto-calculate allocation as 90% of current Kalshi balance
+                    allocation = int(trader.state.bankroll * 0.90 * 100) / 100
+                    DASHBOARD_STATE["recovery_stages_allocation"] = allocation
+                else:
+                    allocation = DASHBOARD_STATE.get("recovery_stages_allocation", 0)
+
                 if allocation > 0:
                     result = trader.run_once_recovery_stages(allocation, DASHBOARD_STATE)
                 else:
