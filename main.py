@@ -70,6 +70,9 @@ DASHBOARD_STATE = {
     },
     "recovery_stages_math": None,  # Calculated bet sizing info
     "use_full_bankroll": False,  # Auto-use 90% of Kalshi balance
+    # Conservative Mode (Stage 2 capped at 20% of bankroll)
+    "conservative_mode_enabled": False,
+    "conservative_mode_math": None,
 }
 
 
@@ -149,6 +152,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.handle_reset_stats()
         elif self.path == "/api/set-recovery-stages":
             self.handle_set_recovery_stages()
+        elif self.path == "/api/set-conservative-mode":
+            self.handle_set_conservative_mode()
         else:
             self.send_error(404)
 
@@ -247,6 +252,82 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     "total_loss_cents": 0,
                 }
                 log_activity("Recovery Stages DISABLED")
+                self.send_json({"success": True})
+
+        except Exception as e:
+            self.send_json({"success": False, "error": str(e)})
+
+    def handle_set_conservative_mode(self):
+        """Handle enabling/disabling conservative recovery stages mode."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            data = json.loads(body) if body else {}
+
+            enabled = data.get('enabled', False)
+            bankroll = data.get('bankroll', 0)
+
+            if enabled:
+                if not bankroll or bankroll <= 0:
+                    self.send_json({"success": False, "error": "Invalid bankroll"})
+                    return
+
+                # Calculate conservative bet sizing
+                calc = RecoveryStagesCalculator()
+                result = calc.validate_conservative(bankroll)
+
+                if not result.get("valid"):
+                    self.send_json({
+                        "success": False,
+                        "error": result.get("error", "Bankroll too small for conservative mode")
+                    })
+                    return
+
+                # Disable standard recovery stages if enabled
+                DASHBOARD_STATE["recovery_stages_enabled"] = False
+                DASHBOARD_STATE["recovery_stages_allocation"] = None
+                DASHBOARD_STATE["recovery_stages_math"] = None
+                DASHBOARD_STATE["use_full_bankroll"] = False
+
+                # Enable conservative mode
+                DASHBOARD_STATE["conservative_mode_enabled"] = True
+                DASHBOARD_STATE["conservative_mode_math"] = result
+                DASHBOARD_STATE["recovery_stages_state"] = {
+                    "stage": 0,
+                    "initial_loss_cents": 0,
+                    "stage1_loss_cents": 0,
+                    "total_loss_cents": 0,
+                }
+
+                # Force settings for recovery mode
+                DASHBOARD_STATE["auto_compound"] = True
+                DASHBOARD_STATE["stop_loss_enabled"] = False
+
+                log_activity(f"CONSERVATIVE Mode ENABLED: ${bankroll:.2f} bankroll, {result['base_contracts']} base contracts, Stage 2 max ${result['stage2_max_allowed']:.2f}")
+
+                self.send_json({
+                    "success": True,
+                    "base_contracts": result["base_contracts"],
+                    "stage1_contracts": result["stage1_contracts"],
+                    "stage2_contracts": result["stage2_contracts"],
+                    "base_cost": result["base_cost"],
+                    "stage1_cost": result["stage1_cost"],
+                    "stage2_cost": result["stage2_cost"],
+                    "total_risk": result["total_risk"],
+                    "stage2_max_allowed": result["stage2_max_allowed"],
+                    "valid": True,
+                })
+            else:
+                # Disable conservative mode
+                DASHBOARD_STATE["conservative_mode_enabled"] = False
+                DASHBOARD_STATE["conservative_mode_math"] = None
+                DASHBOARD_STATE["recovery_stages_state"] = {
+                    "stage": 0,
+                    "initial_loss_cents": 0,
+                    "stage1_loss_cents": 0,
+                    "total_loss_cents": 0,
+                }
+                log_activity("CONSERVATIVE Mode DISABLED")
                 self.send_json({"success": True})
 
         except Exception as e:
@@ -809,6 +890,49 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     <span id="stageLossInfo" style="margin-left:15px;color:var(--muted);font-size:0.85em;"></span>
                 </div>
             </div>
+
+            <!-- Recovery Stages CONSERVATIVE Mode -->
+            <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border);">
+                <div class="compound-toggle" style="margin-top:0;">
+                    <input type="checkbox" id="conservativeModeEnabled" onchange="toggleConservativeMode()">
+                    <label for="conservativeModeEnabled" style="font-weight:600;color:var(--blue);">Recovery Stages Mode - Conservative</label>
+                    <span style="color:var(--muted);font-size:0.85em;margin-left:8px;">(Stage 2 capped at 20% of bankroll)</span>
+                </div>
+
+                <div id="conservativeModePanel" style="display:none;margin-top:15px;padding:15px;background:rgba(0,212,255,0.1);border:1px solid var(--blue);border-radius:12px;">
+                    <div style="display:flex;align-items:center;gap:15px;margin-bottom:15px;flex-wrap:wrap;">
+                        <span style="color:var(--muted);font-size:0.85em;">Uses current Kalshi balance:</span>
+                        <span id="conservativeBankrollDisplay" style="font-weight:700;color:var(--blue);">$0.00</span>
+                        <button onclick="applyConservativeMode()" style="padding:8px 16px;background:var(--blue);border:none;border-radius:8px;color:#000;cursor:pointer;font-weight:600;">Apply</button>
+                    </div>
+
+                    <div id="conservativeMathDisplay" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center;font-size:0.85em;">
+                        <div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:8px;">
+                            <div style="color:var(--green);font-weight:700;" id="cmBase">-</div>
+                            <div style="color:var(--muted);font-size:0.75em;">Base Bet</div>
+                        </div>
+                        <div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:8px;">
+                            <div style="color:var(--yellow);font-weight:700;" id="cmStage1">-</div>
+                            <div style="color:var(--muted);font-size:0.75em;">Stage 1</div>
+                        </div>
+                        <div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:8px;">
+                            <div style="color:var(--red);font-weight:700;" id="cmStage2">-</div>
+                            <div style="color:var(--muted);font-size:0.75em;">Stage 2 (max 20%)</div>
+                        </div>
+                        <div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:8px;">
+                            <div style="font-weight:700;" id="cmTotal">-</div>
+                            <div style="color:var(--muted);font-size:0.75em;">Total Risk</div>
+                        </div>
+                    </div>
+                    <div id="conservativeValidation" style="margin-top:10px;text-align:center;font-size:0.85em;"></div>
+                </div>
+
+                <div id="conservativeStageIndicator" style="display:none;margin-top:15px;padding:10px 15px;background:rgba(0,212,255,0.15);border-radius:8px;text-align:center;">
+                    <span style="color:var(--muted);">Current Stage:</span>
+                    <span id="conservativeCurrentStageLabel" style="font-weight:700;margin-left:8px;color:var(--blue);">BASE</span>
+                    <span id="conservativeStageLossInfo" style="margin-left:15px;color:var(--muted);font-size:0.85em;"></span>
+                </div>
+            </div>
         </div>
 
         <!-- Status Bar -->
@@ -1146,6 +1270,29 @@ class DashboardHandler(BaseHTTPRequestHandler):
                         document.getElementById('stageLossInfo').textContent = '';
                     }
                 }
+
+                // Conservative mode state
+                if (data.conservative_mode_enabled) {
+                    const indicator = document.getElementById('conservativeStageIndicator');
+                    indicator.style.display = 'block';
+                    const stage = data.recovery_stages_state?.stage || 0;
+                    const stageLabels = {0: 'BASE', 1: 'STAGE 1', 2: 'STAGE 2'};
+                    const stageColors = {0: 'var(--green)', 1: 'var(--yellow)', 2: 'var(--red)'};
+                    document.getElementById('conservativeCurrentStageLabel').textContent = stageLabels[stage] || 'BASE';
+                    document.getElementById('conservativeCurrentStageLabel').style.color = stageColors[stage] || 'var(--blue)';
+
+                    const totalLoss = data.recovery_stages_state?.total_loss_cents || 0;
+                    if (totalLoss > 0) {
+                        document.getElementById('conservativeStageLossInfo').textContent = 'Recovering: $' + (totalLoss / 100).toFixed(2);
+                    } else {
+                        document.getElementById('conservativeStageLossInfo').textContent = '';
+                    }
+
+                    // Update conservative math display if panel is open
+                    if (document.getElementById('conservativeModeEnabled').checked) {
+                        updateConservativeMath();
+                    }
+                }
             });
         }
 
@@ -1275,6 +1422,144 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     document.getElementById('rmTotal').textContent = '$' + data.total_risk.toFixed(2);
                     document.getElementById('rmTotal').style.color = 'var(--green)';
                     document.getElementById('recoveryValidation').innerHTML = '<span style="color:var(--green);">Recovery Stages ACTIVE</span>';
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            });
+        }
+
+        // Conservative Mode functions
+        function toggleConservativeMode() {
+            const enabled = document.getElementById('conservativeModeEnabled').checked;
+            const panel = document.getElementById('conservativeModePanel');
+            const indicator = document.getElementById('conservativeStageIndicator');
+
+            panel.style.display = enabled ? 'block' : 'none';
+
+            if (enabled) {
+                // Disable standard recovery stages if enabled
+                document.getElementById('recoveryStagesEnabled').checked = false;
+                document.getElementById('recoveryStagesPanel').style.display = 'none';
+                document.getElementById('recoveryStageIndicator').style.display = 'none';
+
+                // Grey out conflicting options
+                document.getElementById('autoCompound').disabled = true;
+                document.getElementById('autoCompound').checked = true;
+                document.getElementById('stopLossEnabled').disabled = true;
+                document.getElementById('stopLossEnabled').checked = false;
+                document.getElementById('stopLossPrice').disabled = true;
+
+                updateConservativeMath();
+            } else {
+                // Re-enable options
+                document.getElementById('autoCompound').disabled = false;
+                document.getElementById('stopLossEnabled').disabled = false;
+                document.getElementById('stopLossPrice').disabled = false;
+                indicator.style.display = 'none';
+
+                // Disable conservative mode on server
+                fetch('/api/set-conservative-mode', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({enabled: false})
+                });
+            }
+        }
+
+        function updateConservativeMath() {
+            // Get current Kalshi balance
+            const balanceText = document.getElementById('kalshiBalance').textContent;
+            const bankroll = parseFloat(balanceText.replace('$', '').replace(',', '')) || 0;
+
+            document.getElementById('conservativeBankrollDisplay').textContent = '$' + bankroll.toFixed(2);
+
+            if (bankroll <= 0) {
+                document.getElementById('cmBase').textContent = '-';
+                document.getElementById('cmStage1').textContent = '-';
+                document.getElementById('cmStage2').textContent = '-';
+                document.getElementById('cmTotal').textContent = '-';
+                document.getElementById('conservativeValidation').innerHTML = '<span style="color:var(--red);">No bankroll available</span>';
+                return;
+            }
+
+            // Calculate conservative sizing
+            // Stage 2 max = 20% of bankroll
+            const stage2MaxCost = bankroll * 0.20;
+            const worstFill = 88; // 87c + 1c slippage
+            const costPerContract = worstFill / 100;
+            const netProfit = (100 - worstFill) / 100 - 0.01; // ~$0.11
+            const feePerContract = 0.01;
+            const lossPerContract = costPerContract + feePerContract;
+
+            // Max Stage 2 contracts
+            const maxS2Contracts = Math.floor(stage2MaxCost / costPerContract);
+
+            // Find max base that Stage 2 can recover
+            let base = 0, s1 = 0, s2 = 0, total = 0;
+            let valid = false;
+
+            for (let b = 1; b <= 100; b++) {
+                const baseCost = b * costPerContract;
+                const baseLoss = b * lossPerContract;
+                const s1c = Math.ceil(baseLoss * 1.05 / netProfit);
+                const s1Cost = s1c * costPerContract;
+                const s1Loss = s1c * lossPerContract;
+                const totalLossBeforeS2 = baseLoss + s1Loss;
+                const s2c = Math.ceil(totalLossBeforeS2 * 1.05 / netProfit);
+                const s2Cost = s2c * costPerContract;
+
+                if (s2Cost <= stage2MaxCost) {
+                    base = b;
+                    s1 = s1c;
+                    s2 = s2c;
+                    total = baseCost + s1Cost + s2Cost;
+                    valid = true;
+                } else {
+                    break;
+                }
+            }
+
+            document.getElementById('cmBase').textContent = base > 0 ? base + ' @ $' + (base * costPerContract).toFixed(2) : '-';
+            document.getElementById('cmStage1').textContent = s1 > 0 ? s1 + ' @ $' + (s1 * costPerContract).toFixed(2) : '-';
+            document.getElementById('cmStage2').textContent = s2 > 0 ? s2 + ' @ $' + (s2 * costPerContract).toFixed(2) + ' (max $' + stage2MaxCost.toFixed(2) + ')' : '-';
+            document.getElementById('cmTotal').textContent = total > 0 ? '$' + total.toFixed(2) : '-';
+            document.getElementById('cmTotal').style.color = valid ? 'var(--green)' : 'var(--red)';
+
+            const validEl = document.getElementById('conservativeValidation');
+            if (valid) {
+                const s2Pct = (s2 * costPerContract / bankroll * 100).toFixed(1);
+                validEl.innerHTML = '<span style="color:var(--green);">Valid - Stage 2 uses ' + s2Pct + '% of bankroll (max 20%)</span>';
+            } else {
+                validEl.innerHTML = '<span style="color:var(--red);">Bankroll too small for conservative mode</span>';
+            }
+        }
+
+        function applyConservativeMode() {
+            const balanceText = document.getElementById('kalshiBalance').textContent;
+            const bankroll = parseFloat(balanceText.replace('$', '').replace(',', '')) || 0;
+
+            if (bankroll <= 0) {
+                alert('No bankroll available');
+                return;
+            }
+
+            fetch('/api/set-conservative-mode', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({enabled: true, bankroll: bankroll})
+            }).then(r => r.json()).then(data => {
+                if (data.success) {
+                    document.getElementById('conservativeStageIndicator').style.display = 'block';
+                    document.getElementById('conservativeCurrentStageLabel').textContent = 'BASE';
+                    document.getElementById('conservativeStageLossInfo').textContent = '';
+
+                    // Update display with server values
+                    document.getElementById('cmBase').textContent = data.base_contracts + ' @ $' + data.base_cost.toFixed(2);
+                    document.getElementById('cmStage1').textContent = data.stage1_contracts + ' @ $' + data.stage1_cost.toFixed(2);
+                    document.getElementById('cmStage2').textContent = data.stage2_contracts + ' @ $' + data.stage2_cost.toFixed(2) + ' (max $' + data.stage2_max_allowed.toFixed(2) + ')';
+                    document.getElementById('cmTotal').textContent = '$' + data.total_risk.toFixed(2);
+                    document.getElementById('cmTotal').style.color = 'var(--green)';
+                    document.getElementById('conservativeValidation').innerHTML = '<span style="color:var(--green);">CONSERVATIVE MODE ACTIVE</span>';
                 } else {
                     alert('Error: ' + (data.error || 'Unknown error'));
                 }
@@ -1414,7 +1699,11 @@ def cmd_run():
             # Run trading cycle - choose mode based on recovery stages setting
             profit_before = trader.state.total_profit
 
-            if DASHBOARD_STATE.get("recovery_stages_enabled"):
+            if DASHBOARD_STATE.get("conservative_mode_enabled"):
+                # Conservative Mode - Stage 2 capped at 20% of bankroll
+                # Always uses current bankroll, auto-recalculates sizing
+                result = trader.run_once_conservative(trader.state.bankroll, DASHBOARD_STATE)
+            elif DASHBOARD_STATE.get("recovery_stages_enabled"):
                 # Recovery Stages Mode
                 if DASHBOARD_STATE.get("use_full_bankroll"):
                     # Auto-calculate allocation as 90% of current Kalshi balance

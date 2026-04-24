@@ -77,6 +77,10 @@ class RecoveryStagesCalculator:
     Recovery formula:
     - contracts_needed = ceil((loss_to_recover * 1.05) / net_profit_per_contract)
     - The 1.05 buffer accounts for slippage and provides small profit
+
+    Conservative mode:
+    - Stage 2 capped at 20% of bankroll
+    - Base + Stage 1 sized so Stage 2 can recover them
     """
 
     # Entry price limits
@@ -89,6 +93,9 @@ class RecoveryStagesCalculator:
 
     # Recovery buffer (5% over loss)
     RECOVERY_BUFFER = 1.05
+
+    # Conservative mode: Stage 2 max percentage of bankroll
+    CONSERVATIVE_STAGE2_PCT = 0.20
 
     @staticmethod
     def calc_fee(price_cents: int) -> float:
@@ -278,6 +285,120 @@ class RecoveryStagesCalculator:
         # Add helpful info
         result["min_allocation"] = round(self._min_allocation(), 2)
         result["utilization_pct"] = round(result["total_risk"] / allocation * 100, 1)
+
+        return result
+
+    def calculate_conservative_base_contracts(self, bankroll: float) -> dict:
+        """
+        Calculate base contracts for Conservative mode.
+
+        In Conservative mode:
+        - Stage 2 is capped at 20% of bankroll
+        - Base + Stage 1 must be recoverable by Stage 2
+
+        Args:
+            bankroll: Current bankroll in dollars
+
+        Returns:
+            dict with base_contracts, stage1_cost, stage2_cost, total_risk, valid
+        """
+        if bankroll <= 0:
+            return {"base_contracts": 0, "valid": False, "error": "Invalid bankroll"}
+
+        # Stage 2 max cost = 20% of bankroll
+        stage2_max_cost = bankroll * self.CONSERVATIVE_STAGE2_PCT
+
+        # Use worst-case fill price (88c = 87c ask + 1c slippage)
+        worst_fill_price = self.RECOVERY_MAX_PRICE + self.SLIPPAGE_CENTS
+        cost_per_contract = worst_fill_price / 100
+        net_profit = self.calc_net_profit(worst_fill_price)
+        fee_per_contract = self.calc_fee(worst_fill_price)
+        loss_per_contract = cost_per_contract + fee_per_contract  # Full loss including fee
+
+        # Max Stage 2 contracts given cost cap
+        max_s2_contracts = int(stage2_max_cost / cost_per_contract)
+        if max_s2_contracts < 1:
+            return {
+                "base_contracts": 0,
+                "valid": False,
+                "error": f"Bankroll too small. Need at least ${cost_per_contract / self.CONSERVATIVE_STAGE2_PCT:.2f}",
+            }
+
+        # Max loss Stage 2 can recover = s2_contracts * net_profit / buffer
+        max_recoverable_loss = (max_s2_contracts * net_profit) / self.RECOVERY_BUFFER
+
+        # Now find max base contracts where base_loss + stage1_loss <= max_recoverable
+        best_valid = 0
+        best_result = None
+
+        for base_contracts in range(1, 100):
+            base_cost = base_contracts * cost_per_contract
+            base_loss = base_contracts * loss_per_contract
+
+            # Stage 1 to recover base
+            s1_contracts = math.ceil((base_loss * self.RECOVERY_BUFFER) / net_profit)
+            s1_cost = s1_contracts * cost_per_contract
+            s1_loss = s1_contracts * loss_per_contract
+
+            # Total loss before Stage 2
+            total_loss_before_s2 = base_loss + s1_loss
+
+            # Can Stage 2 recover this?
+            s2_contracts_needed = math.ceil((total_loss_before_s2 * self.RECOVERY_BUFFER) / net_profit)
+            s2_cost_needed = s2_contracts_needed * cost_per_contract
+
+            if s2_cost_needed <= stage2_max_cost:
+                # Valid configuration
+                total_risk = base_cost + s1_cost + s2_cost_needed
+                best_valid = base_contracts
+                best_result = {
+                    "base_contracts": base_contracts,
+                    "stage1_contracts": s1_contracts,
+                    "stage2_contracts": s2_contracts_needed,
+                    "base_cost": round(base_cost, 2),
+                    "stage1_cost": round(s1_cost, 2),
+                    "stage2_cost": round(s2_cost_needed, 2),
+                    "total_risk": round(total_risk, 2),
+                    "stage2_max_allowed": round(stage2_max_cost, 2),
+                    "stage2_pct_of_bankroll": round(s2_cost_needed / bankroll * 100, 1),
+                    "net_profit_per_contract": round(net_profit, 2),
+                }
+            else:
+                break  # Exceeded Stage 2 cap
+
+        if best_valid == 0:
+            return {
+                "base_contracts": 0,
+                "stage1_contracts": 0,
+                "stage2_contracts": 0,
+                "base_cost": 0,
+                "stage1_cost": 0,
+                "stage2_cost": 0,
+                "total_risk": 0,
+                "valid": False,
+                "error": f"Bankroll ${bankroll:.2f} too small for conservative mode. Stage 2 cap (${stage2_max_cost:.2f}) cannot recover minimum losses.",
+            }
+
+        return {
+            **best_result,
+            "valid": True,
+            "bankroll": bankroll,
+            "mode": "conservative",
+        }
+
+    def validate_conservative(self, bankroll: float) -> dict:
+        """
+        Validate bankroll for conservative recovery stages mode.
+
+        Returns detailed breakdown of what the bankroll can support.
+        """
+        result = self.calculate_conservative_base_contracts(bankroll)
+
+        if not result.get("valid"):
+            return result
+
+        # Add helpful info
+        result["stage2_cap_pct"] = f"{self.CONSERVATIVE_STAGE2_PCT * 100:.0f}%"
 
         return result
 

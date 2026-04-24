@@ -20,6 +20,10 @@ logs/
 data/
 *.log
 
+# Large backtest data files (>100MB)
+months long backtests/btc_price_log*.csv
+first_full_week_backtests/
+
 # IDE
 .idea/
 .vscode/
